@@ -25,3 +25,5 @@ app.on("quit", async () => {
 
   console.log("App is closed.");
 });
+
+export const viteNodeApp = app;
