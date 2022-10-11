@@ -7,7 +7,7 @@
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "yarn prebuild && tsc && vite build",
-    "start:dev": "vite",
+    "dev": "vite",
     "preview": "vite preview",
     "start": "electron-forge start",
     "package": "electron-forge package",
