@@ -1,27 +1,33 @@
 import { Injectable } from "@nestjs/common";
-import * as fs from "fs";
-import * as util from "util";
+import { FileSystemService } from "../file-system/file-system.service";
+import { Entity } from "../file-system/type";
+import { Statistics } from "./type";
 
 const TEMP_DIR_LOCATION = "C:/Users/Michail/Downloads/homecloud";
 
-interface Statistics {
-  total_file_count: number;
-  total_dirs_count: number;
-  total_space_size: number;
-}
-
 @Injectable()
 export class StorageService {
-  async getStatistics(): Promise<Statistics> {
-    const readdir = util.promisify(fs.readdir);
+  constructor(private readonly fileSystemService: FileSystemService) {}
 
-    const dir = await readdir(TEMP_DIR_LOCATION);
-    console.log(dir);
+  async getStatistics(): Promise<Statistics> {
+    const entities = await this.fileSystemService.readDir(TEMP_DIR_LOCATION);
+    const files = entities.filter(e => e.isFile);
+
+    const totalFileCount = files.length;
+    const totalDirCount = entities.filter(e => e.isDirectory).length;
+
+    let totalSpaceSize = files.reduce((size, file) => size + file.size, 0);
+
+    while (totalSpaceSize > 1024) totalSpaceSize /= 1024;
 
     return {
-      total_file_count: 0,
-      total_dirs_count: 0,
-      total_space_size: 0,
+      total_dirs_count: totalDirCount,
+      total_file_count: totalFileCount,
+      total_space_size: totalSpaceSize,
     };
+  }
+
+  async getRootEntities(): Promise<Entity[]> {
+    return this.fileSystemService.readDir(TEMP_DIR_LOCATION);
   }
 }

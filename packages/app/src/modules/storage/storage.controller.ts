@@ -6,7 +6,12 @@ export class StorageController {
   constructor(private readonly storageService: StorageService) {}
 
   @Get("/statistics")
-  async getStatistics() {
-    await this.storageService.getStatistics();
+  getStatistics() {
+    return this.storageService.getStatistics();
+  }
+
+  @Get("/")
+  getRootEntities() {
+    return this.storageService.getRootEntities();
   }
 }
