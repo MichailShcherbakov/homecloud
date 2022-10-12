@@ -19,4 +19,5 @@ jobs:
         with:
           username: 'MichailShcherbakov'
           reponame: 'homecloud'
+          useyarn: true
           token: ${{ secrets.GITHUB_TOKEN }}
