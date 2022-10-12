@@ -26,7 +26,7 @@ export class FetchScanner implements IScanner {
 
   scan(ip: string): Promise<Response> {
     return fetch(
-      `${this.secure ? "https" : "http"}://${ip}:${this.port}/${this.uri}/`,
+      `${this.secure ? "https" : "http"}://${ip}:${this.port}/${this.uri}`,
       this.options
     );
   }
