@@ -5,6 +5,7 @@ import svg from "vite-svg-loader";
 import vuetify from "vite-plugin-vuetify";
 
 export default defineConfig({
+  base: "/homecloud/",
   plugins: [vue(), vuetify({ autoImport: true }), svg()],
   css: {
     preprocessorOptions: {
