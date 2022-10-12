@@ -3,8 +3,12 @@ name: Github Pages
 on:
   push:
     branches: [master]
+    path: 
+      - 'packages/web/**'
   pull_request:
     branches: [master]
+    path: 
+      - 'packages/web/**'
 
 jobs:
   build_vue:
@@ -14,10 +18,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Build-Vue
-        uses: xRealNeon/VuePagesAction@1.0.1
+      - name: Setup Node
+        uses: actions/setup-node@v3
+
+      - name: Build
+      
+      - run: yarn ci
+      - run: yarn build
+      
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          username: 'MichailShcherbakov'
-          reponame: 'homecloud'
-          useyarn: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
