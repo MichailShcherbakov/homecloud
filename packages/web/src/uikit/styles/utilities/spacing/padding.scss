@@ -1,0 +1,29 @@
+@mixin ui-p($val) {
+  padding: $val;
+}
+
+@mixin ui-px($val) {
+  padding-left: $val;
+  padding-right: $val;
+}
+
+@mixin ui-py($val) {
+  padding-top: $val;
+  padding-bottom: $val;
+}
+
+@mixin ui-pt($val) {
+  padding-top: $val;
+}
+
+@mixin ui-pb($val) {
+  padding-bottom: $val;
+}
+
+@mixin ui-pl($val) {
+  padding-left: $val;
+}
+
+@mixin ui-pr($val) {
+  padding-right: $val;
+}

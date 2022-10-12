@@ -1,0 +1,29 @@
+@mixin ui-m($val) {
+  margin: $val;
+}
+
+@mixin ui-mx($val) {
+  margin-left: $val;
+  margin-right: $val;
+}
+
+@mixin ui-my($val) {
+  margin-top: $val;
+  margin-bottom: $val;
+}
+
+@mixin ui-mt($val) {
+  margin-top: $val;
+}
+
+@mixin ui-mb($val) {
+  margin-bottom: $val;
+}
+
+@mixin ui-ml($val) {
+  margin-left: $val;
+}
+
+@mixin ui-mr($val) {
+  margin-right: $val;
+}

@@ -1,11 +1,12 @@
 import { INestApplication } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./modules/app.module";
+import { createApp } from "./utils/createApp";
 
 let app: INestApplication;
 
 export async function bootstrap() {
-  app = await NestFactory.create(AppModule);
+  app = await createApp(AppModule);
+
   await app.listen(12536);
 }
 

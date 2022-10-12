@@ -1,0 +1,38 @@
+*,
+::after,
+::before {
+  margin: 0;
+  padding: 0;
+
+  box-sizing: border-box;
+
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100vh;
+
+  scroll-behavior: smooth;
+}
+
+a {
+  text-decoration: inherit;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+img {
+  user-select: none;
+}
+
+ui,
+li {
+  list-style: none;
+}
+
+table {
+  border-collapse: collapse;
+}
