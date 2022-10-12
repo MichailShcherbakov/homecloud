@@ -21,7 +21,7 @@ export class FetchScanner implements IScanner {
   }
 
   scan(ip: string): Promise<Response> {
-    return fetch(`http://${ip}:${this.port}/${this.uri}`, this.options);
+    return fetch(`http://localhost:${this.port}/${this.uri}`, this.options);
   }
 
   stop() {

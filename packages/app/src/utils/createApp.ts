@@ -7,7 +7,7 @@ export async function createApp<M>(appModule: M): Promise<INestApplication> {
   app.enableCors({
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
     credentials: true,
-    origin: "https://michailshcherbakov.github.io/homecloud/",
+    origin: "https://michailshcherbakov.github.io",
   });
 
   return app;
