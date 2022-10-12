@@ -11,9 +11,9 @@ on:
       - 'packages/web/**'
 
 jobs:
-  build_vue:
+  deploy_web:
     runs-on: ubuntu-latest
-    name: Build Vue
+    name: Deploy Web
 
     defaults:
       run:
