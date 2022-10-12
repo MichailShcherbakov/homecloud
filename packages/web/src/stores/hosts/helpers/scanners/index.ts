@@ -7,11 +7,7 @@ export class FetchScanner implements IScanner {
   private readonly options: RequestInit;
   private readonly controller: AbortController = new AbortController();
 
-  constructor(
-    private readonly port: number,
-    private readonly uri: string,
-    private readonly secure = false
-  ) {
+  constructor(private readonly port: number, private readonly uri: string) {
     this.options = {
       signal: this.controller.signal,
       method: "GET",
@@ -25,10 +21,7 @@ export class FetchScanner implements IScanner {
   }
 
   scan(ip: string): Promise<Response> {
-    return fetch(
-      `${this.secure ? "https" : "http"}://${ip}:${this.port}/${this.uri}`,
-      this.options
-    );
+    return fetch(`http://${ip}:${this.port}/${this.uri}`, this.options);
   }
 
   stop() {
