@@ -43,11 +43,11 @@ export const Stack: React.FC<StackProps> = (props: StackProps) => {
       elProps.style.marginLeft = elProps.style.marginLeft ?? 0;
       elProps.style.marginTop = elProps.style.marginTop ?? 0;
 
-      if (idx !== 0) {
-        if (row) elProps.style.marginLeft += theme.spacing(gap);
+      if (idx === 0) return el;
 
-        if (column) elProps.style.marginTop += theme.spacing(gap);
-      }
+      if (row) elProps.style.marginLeft += theme.spacing(gap);
+
+      if (column) elProps.style.marginTop += theme.spacing(gap);
 
       return React.cloneElement(el, elProps);
     });

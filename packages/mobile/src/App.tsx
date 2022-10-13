@@ -5,24 +5,34 @@ import { HostCard } from "@components/cards/HostCard";
 import { Stack } from "@components/Stack";
 import { NerworkScanLoader } from "@components/loaders/NetworkScan";
 import { StyleSheet } from "@theme/StyleSheet";
+import { useNetworkScan } from "@/utils/network-scan/useNetworkScan";
 
 export const App: React.FC<{}> = () => {
   const { styles } = useStyle();
+  const { isScanning, hosts } = useNetworkScan();
+
+  console.log(isScanning);
+
   return (
     <View style={styles.root}>
       <AppBar />
       <ScrollView style={styles.container}>
-        {/* <NerworkScanLoader /> */}
-        <Stack column gap={3}>
-          <HostCard
-            name="Inner Host"
-            ip="192.168.1.106"
-            dirs={2}
-            files={15}
-            space={29.642587}
-            variant="fill"
-          />
-        </Stack>
+        {isScanning && <NerworkScanLoader />}
+        {!isScanning && (
+          <Stack column gap={3}>
+            {hosts.map(host => (
+              <HostCard
+                key={host.name}
+                name={host.name}
+                ip={host.ip}
+                dirs={host.totalDirsCount}
+                files={host.totalFileCount}
+                space={host.totalSpaceUsed}
+                variant="fill"
+              />
+            ))}
+          </Stack>
+        )}
       </ScrollView>
     </View>
   );
