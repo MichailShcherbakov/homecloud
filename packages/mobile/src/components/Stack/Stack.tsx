@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, ViewStyle } from "react-native";
 
 export interface StackProps {
   children: any;
@@ -17,10 +17,12 @@ export interface StackProps {
     | "space-evenly";
   wrap?: boolean;
   fullWidth?: boolean;
+  style?: ViewStyle;
 }
 
 export const Stack: React.FC<StackProps> = (props: StackProps) => {
   const {
+    style,
     children,
     row,
     rowRef,
@@ -36,6 +38,7 @@ export const Stack: React.FC<StackProps> = (props: StackProps) => {
     () =>
       StyleSheet.create({
         root: {
+          ...style,
           display: "flex",
           flexDirection: row
             ? "row"
@@ -60,6 +63,7 @@ export const Stack: React.FC<StackProps> = (props: StackProps) => {
       justifyContent,
       row,
       rowRef,
+      style,
       wrap,
     ]
   );
