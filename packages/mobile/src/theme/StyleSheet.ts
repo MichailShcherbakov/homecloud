@@ -21,4 +21,5 @@ export const StyleSheet = createStyleSheet({
     },
     divider: "#eee",
   },
+  spacing: (val: number) => val * 8,
 });

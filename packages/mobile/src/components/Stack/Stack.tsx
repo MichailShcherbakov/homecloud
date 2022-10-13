@@ -1,8 +1,8 @@
+import { StyleSheet } from "@theme/StyleSheet";
 import React from "react";
-import { StyleSheet, View, ViewStyle } from "react-native";
+import { View, ViewStyle } from "react-native";
 
-export interface StackProps {
-  children: any;
+interface StyleProps {
   row?: boolean;
   rowRef?: boolean;
   column?: boolean;
@@ -17,24 +17,18 @@ export interface StackProps {
     | "space-evenly";
   wrap?: boolean;
   fullWidth?: boolean;
+}
+
+export interface StackProps extends StyleProps {
+  children: any;
   style?: ViewStyle;
   gap?: number;
 }
 
 export const Stack: React.FC<StackProps> = (props: StackProps) => {
-  const {
-    style,
-    children,
-    row,
-    rowRef,
-    column,
-    columnRef,
-    alignItems,
-    justifyContent,
-    wrap,
-    fullWidth,
-    gap = 0,
-  } = props;
+  const { style, children, row, column, gap = 0 } = props;
+
+  const { cx, styles, theme } = useStyle(props);
 
   let elements = children;
 
@@ -50,48 +44,46 @@ export const Stack: React.FC<StackProps> = (props: StackProps) => {
       elProps.style.marginTop = elProps.style.marginTop ?? 0;
 
       if (idx !== 0) {
-        if (row) elProps.style.marginLeft += gap * 8;
+        if (row) elProps.style.marginLeft += theme.spacing(gap);
 
-        if (column) elProps.style.marginTop += gap * 8;
+        if (column) elProps.style.marginTop += theme.spacing(gap);
       }
 
       return React.cloneElement(el, elProps);
     });
   }
 
-  const styles = React.useMemo(
-    () =>
-      StyleSheet.create({
-        root: {
-          display: "flex",
-          flexDirection: row
-            ? "row"
-            : rowRef
-            ? "row-reverse"
-            : column
-            ? "column"
-            : columnRef
-            ? "column-reverse"
-            : "row",
-          alignItems,
-          justifyContent,
-          width: fullWidth ? "100%" : undefined,
-          wrap,
-        },
-      }),
-    [
-      alignItems,
-      column,
-      columnRef,
-      fullWidth,
-      justifyContent,
+  return <View style={cx([styles.root, style])}>{elements}</View>;
+};
+
+const useStyle = StyleSheet<StyleProps>()(
+  ({
+    props: {
       row,
       rowRef,
+      column,
+      columnRef,
+      alignItems,
+      justifyContent,
+      fullWidth,
       wrap,
-    ]
-  );
-
-  return (
-    <View style={StyleSheet.flatten([styles.root, style])}>{elements}</View>
-  );
-};
+    },
+  }) => ({
+    root: {
+      display: "flex",
+      flexDirection: row
+        ? "row"
+        : rowRef
+        ? "row-reverse"
+        : column
+        ? "column"
+        : columnRef
+        ? "column-reverse"
+        : "row",
+      alignItems,
+      justifyContent,
+      width: fullWidth ? "100%" : undefined,
+      wrap,
+    },
+  })
+);

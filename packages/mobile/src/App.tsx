@@ -1,14 +1,18 @@
 import React from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { AppBar } from "@components/AppBar";
 import { HostCard } from "@components/cards/HostCard";
 import { Stack } from "@components/Stack";
+import { NerworkScanLoader } from "@components/loaders/NetworkScan";
+import { StyleSheet } from "@theme/StyleSheet";
 
 export const App: React.FC<{}> = () => {
+  const { styles } = useStyle();
   return (
-    <View>
+    <View style={styles.root}>
       <AppBar />
       <ScrollView style={styles.container}>
+        {/* <NerworkScanLoader /> */}
         <Stack column gap={3}>
           <HostCard
             name="Inner Host"
@@ -24,11 +28,13 @@ export const App: React.FC<{}> = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 24,
+const useStyle = StyleSheet()(() => ({
+  root: {
     height: "100%",
   },
-});
+  container: {
+    paddingHorizontal: 24,
+  },
+}));
 
 export default App;

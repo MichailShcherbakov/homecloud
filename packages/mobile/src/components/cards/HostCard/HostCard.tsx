@@ -9,7 +9,7 @@ import SpaceIcon from "@assets/donut_large_black_24dp.svg";
 import FileIcon from "@assets/description_black_24dp.svg";
 import FolderIcon from "@assets/folder_black_24dp.svg";
 
-export interface StyleProps {
+interface StyleProps {
   variant?: "fill" | "text";
 }
 
