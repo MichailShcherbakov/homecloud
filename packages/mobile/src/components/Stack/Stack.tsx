@@ -18,6 +18,7 @@ export interface StackProps {
   wrap?: boolean;
   fullWidth?: boolean;
   style?: ViewStyle;
+  gap?: number;
 }
 
 export const Stack: React.FC<StackProps> = (props: StackProps) => {
@@ -32,13 +33,36 @@ export const Stack: React.FC<StackProps> = (props: StackProps) => {
     justifyContent,
     wrap,
     fullWidth,
+    gap = 0,
   } = props;
+
+  let elements = children;
+
+  if (Array.isArray(elements)) {
+    elements = elements.map((el, idx) => {
+      const elProps: any = {
+        style: {
+          ...el.props.style,
+        },
+      };
+
+      elProps.style.marginLeft = elProps.style.marginLeft ?? 0;
+      elProps.style.marginTop = elProps.style.marginTop ?? 0;
+
+      if (idx !== 0) {
+        if (row) elProps.style.marginLeft += gap * 8;
+
+        if (column) elProps.style.marginTop += gap * 8;
+      }
+
+      return React.cloneElement(el, elProps);
+    });
+  }
 
   const styles = React.useMemo(
     () =>
       StyleSheet.create({
         root: {
-          ...style,
           display: "flex",
           flexDirection: row
             ? "row"
@@ -51,8 +75,8 @@ export const Stack: React.FC<StackProps> = (props: StackProps) => {
             : "row",
           alignItems,
           justifyContent,
-          wrap,
           width: fullWidth ? "100%" : undefined,
+          wrap,
         },
       }),
     [
@@ -63,10 +87,11 @@ export const Stack: React.FC<StackProps> = (props: StackProps) => {
       justifyContent,
       row,
       rowRef,
-      style,
       wrap,
     ]
   );
 
-  return <View style={styles.root}>{children}</View>;
+  return (
+    <View style={StyleSheet.flatten([styles.root, style])}>{elements}</View>
+  );
 };

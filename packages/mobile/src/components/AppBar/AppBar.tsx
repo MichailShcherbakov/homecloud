@@ -1,9 +1,7 @@
 import React from "react";
 import { StyleSheet, Text } from "react-native";
-
-import LogoIcon from "@assets/logo-x24";
 import { Stack } from "@components/Stack";
-
+import LogoIcon from "@assets/logo_24dp.svg";
 import SettingsIcon from "@assets/settings_black_24dp.svg";
 
 export const AppBar: React.FC<{}> = () => {
@@ -20,7 +18,7 @@ export const AppBar: React.FC<{}> = () => {
         <Text style={styles.logoTitle}>Home Cloud</Text>
       </Stack>
       <Stack row alignItems="center">
-        <SettingsIcon width={24} height={24} style={styles.settingsIcon} />
+        <SettingsIcon width={24} height={24} color="#2262C6" />
       </Stack>
     </Stack>
   );
@@ -37,8 +35,5 @@ const styles = StyleSheet.create({
     color: "#2262C6",
     fontSize: 20,
     fontWeight: "700",
-  },
-  settingsIcon: {
-    color: "#2262C6",
   },
 });
