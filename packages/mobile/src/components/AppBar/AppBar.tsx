@@ -1,7 +1,7 @@
 import React from "react";
 import { Text, View } from "react-native";
 
-import LogoIcon from "../../assets/logo-x24.svg";
+import LogoIcon from "@assets/logo-x24";
 
 export const AppBar: React.FC<{}> = () => {
   return (
