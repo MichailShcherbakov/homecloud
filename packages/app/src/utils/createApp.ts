@@ -10,5 +10,7 @@ export async function createApp<M>(appModule: M): Promise<INestApplication> {
     origin: "*",
   });
 
+  app.enableShutdownHooks();
+
   return app;
 }

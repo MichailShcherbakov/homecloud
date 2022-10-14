@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import electron from "vite-plugin-electron";
 import { VitePluginNode } from "vite-plugin-node";
-import * as path from "path";
+import { resolve } from "path";
 
 export default defineConfig(() => {
   return {
@@ -17,12 +17,17 @@ export default defineConfig(() => {
               tsCompiler: "swc",
             }),
           ],
+          resolve: {
+            alias: {
+              "~": resolve(__dirname, "./src"),
+            },
+          },
         },
       }),
     ],
     build: {
       lib: {
-        entry: path.resolve(__dirname, "src/index.ts"),
+        entry: resolve(__dirname, "src/index.ts"),
         name: "homecloud",
       },
     },

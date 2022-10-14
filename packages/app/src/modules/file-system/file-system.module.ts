@@ -1,8 +1,11 @@
 import { Module } from "@nestjs/common";
+import { ConfigModule } from "../config/config.module";
 import { FileSystemService } from "./file-system.service";
+import { LocalStorage } from "./local-storage";
 
 @Module({
-  providers: [FileSystemService],
-  exports: [FileSystemService],
+  imports: [ConfigModule],
+  providers: [FileSystemService, LocalStorage],
+  exports: [FileSystemService, LocalStorage],
 })
 export class FileSystemModule {}
