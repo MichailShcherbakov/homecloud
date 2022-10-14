@@ -35,6 +35,8 @@ export const Stack: React.FC<StackProps> = (props: StackProps) => {
   if (Array.isArray(elements)) {
     elements = elements.map((el, idx) => {
       const elProps: any = {
+        key: idx,
+        ...el.props,
         style: {
           ...el.props.style,
         },

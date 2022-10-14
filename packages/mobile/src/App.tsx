@@ -1,50 +1,25 @@
 import React from "react";
-import { ScrollView, View } from "react-native";
-import { AppBar } from "@components/AppBar";
-import { HostCard } from "@components/cards/HostCard";
-import { Stack } from "@components/Stack";
-import { NerworkScanLoader } from "@components/loaders/NetworkScan";
-import { StyleSheet } from "@theme/StyleSheet";
-import { useNetworkScan } from "@/utils/network-scan/useNetworkScan";
+import { NavigationContainer } from "@react-navigation/native";
+import { HostsScreen } from "./screens/hosts/HostsScreen";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+
+const Stack = createNativeStackNavigator();
 
 export const App: React.FC<{}> = () => {
-  const { styles } = useStyle();
-  const { isScanning, hosts } = useNetworkScan();
-
-  console.log(isScanning);
-
   return (
-    <View style={styles.root}>
-      <AppBar />
-      <ScrollView style={styles.container}>
-        {isScanning && <NerworkScanLoader />}
-        {!isScanning && (
-          <Stack column gap={3}>
-            {hosts.map(host => (
-              <HostCard
-                key={host.name}
-                name={host.name}
-                ip={host.ip}
-                dirs={host.totalDirsCount}
-                files={host.totalFileCount}
-                space={host.totalSpaceUsed}
-                variant="fill"
-              />
-            ))}
-          </Stack>
-        )}
-      </ScrollView>
-    </View>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator
+          initialRouteName="Hosts"
+          screenOptions={{ headerShown: false }}
+        >
+          <Stack.Screen name="Hosts" component={HostsScreen} />
+          <Stack.Screen name="Storage" component={HostsScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 };
-
-const useStyle = StyleSheet()(() => ({
-  root: {
-    height: "100%",
-  },
-  container: {
-    paddingHorizontal: 24,
-  },
-}));
 
 export default App;

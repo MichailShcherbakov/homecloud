@@ -10,7 +10,6 @@ export function useNetworkScan() {
 
   React.useEffect(() => {
     if (netIfno.type !== "wifi" || !netIfno.details.ipAddress) {
-      console.log("here");
       setIsScanning(false);
       return;
     }

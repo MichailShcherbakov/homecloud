@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, ViewStyle } from "react-native";
+import { Pressable, Text, ViewStyle } from "react-native";
 
 import { StyleSheet } from "@/theme/StyleSheet";
 import { Stack } from "@components/Stack";
@@ -20,57 +20,60 @@ export interface HostCardProps extends StyleProps {
   dirs: number;
   space: number;
   style?: ViewStyle;
+  onPress?: () => void;
 }
 
 export const HostCard: React.FC<HostCardProps> = props => {
-  const { name, ip, files, dirs, space, style, variant } = props;
+  const { name, ip, files, dirs, space, style, variant, onPress } = props;
 
   const { styles, cx } = useStyle({
     variant: variant ?? "text",
   });
 
   return (
-    <Stack column style={cx([styles.root, style])} gap={2}>
-      <Stack row>
-        <CloudIcon style={styles.icon} />
-      </Stack>
-      <Stack column>
-        <Text style={styles.title}>{name}</Text>
-        <Text style={styles.subtitle}>{ip}</Text>
-      </Stack>
-      <Stack row gap={1}>
-        <Stack
-          column
-          alignItems="center"
-          justifyContent="center"
-          style={styles.option}
-          gap={1}
-        >
-          <FolderIcon style={styles.optionIcon} />
-          <Text style={styles.optionTitle}>{dirs} Folders</Text>
+    <Pressable onPress={onPress}>
+      <Stack column style={cx([styles.root, style])} gap={2}>
+        <Stack row>
+          <CloudIcon style={styles.icon} />
         </Stack>
-        <Stack
-          column
-          alignItems="center"
-          justifyContent="center"
-          style={styles.option}
-          gap={1}
-        >
-          <FileIcon style={styles.optionIcon} />
-          <Text style={styles.optionTitle}>{files} Files</Text>
+        <Stack column>
+          <Text style={styles.title}>{name}</Text>
+          <Text style={styles.subtitle}>{ip}</Text>
         </Stack>
-        <Stack
-          column
-          alignItems="center"
-          justifyContent="center"
-          style={styles.option}
-          gap={1}
-        >
-          <SpaceIcon style={styles.optionIcon} />
-          <Text style={styles.optionTitle}>{space.toFixed(2)} GB</Text>
+        <Stack row gap={1}>
+          <Stack
+            column
+            alignItems="center"
+            justifyContent="center"
+            style={styles.option}
+            gap={1}
+          >
+            <FolderIcon style={styles.optionIcon} />
+            <Text style={styles.optionTitle}>{dirs} Folders</Text>
+          </Stack>
+          <Stack
+            column
+            alignItems="center"
+            justifyContent="center"
+            style={styles.option}
+            gap={1}
+          >
+            <FileIcon style={styles.optionIcon} />
+            <Text style={styles.optionTitle}>{files} Files</Text>
+          </Stack>
+          <Stack
+            column
+            alignItems="center"
+            justifyContent="center"
+            style={styles.option}
+            gap={1}
+          >
+            <SpaceIcon style={styles.optionIcon} />
+            <Text style={styles.optionTitle}>{space.toFixed(2)} GB</Text>
+          </Stack>
         </Stack>
       </Stack>
-    </Stack>
+    </Pressable>
   );
 };
 
