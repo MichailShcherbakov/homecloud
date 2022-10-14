@@ -29,10 +29,13 @@ export class StorageController {
     return this.storageService.getDirEntities(uuid);
   }
 
-  @Get("/video")
-  getFile(@Req() req: Request, @Res() res: Response) {
-    const path =
-      "C:/Users/Michail/Downloads/homecloud/paramore-fences-live-from-the-final-riot.mp4";
+  @Get("/files/:uuid")
+  async getFile(
+    @Param("uuid", ParseUUIDPipe) uuid: string,
+    @Req() req: Request,
+    @Res() res: Response
+  ) {
+    const path = await this.storageService.getGlobaFilePath(uuid);
 
     const stat = statSync(path);
     const fileSize = stat.size;
