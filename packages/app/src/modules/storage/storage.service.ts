@@ -28,4 +28,8 @@ export class StorageService {
   async getRootEntities(): Promise<Entity[]> {
     return this.localStorage.getRootEntities();
   }
+
+  async getDirEntities(uuid: string): Promise<Entity[]> {
+    return this.localStorage.getDirectoryEntities(uuid);
+  }
 }

@@ -1,4 +1,11 @@
-import { Controller, Get, Req, Res } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Req,
+  Res,
+} from "@nestjs/common";
 import { createReadStream, statSync } from "fs";
 import { StorageService } from "./storage.service";
 import type { Request, Response } from "express";
@@ -15,6 +22,11 @@ export class StorageController {
   @Get("/")
   getRootEntities() {
     return this.storageService.getRootEntities();
+  }
+
+  @Get("/dirs/:uuid")
+  getDirEntities(@Param("uuid", ParseUUIDPipe) uuid: string) {
+    return this.storageService.getDirEntities(uuid);
   }
 
   @Get("/video")
