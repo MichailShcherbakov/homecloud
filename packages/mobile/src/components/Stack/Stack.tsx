@@ -16,6 +16,7 @@ interface StyleProps {
     | "space-around"
     | "space-evenly";
   wrap?: boolean;
+  flex?: number;
   fullWidth?: boolean;
 }
 
@@ -69,6 +70,7 @@ const useStyle = StyleSheet<StyleProps>()(
       justifyContent,
       fullWidth,
       wrap,
+      flex,
     },
   }) => ({
     root: {
@@ -85,6 +87,7 @@ const useStyle = StyleSheet<StyleProps>()(
       alignItems,
       justifyContent,
       width: fullWidth ? "100%" : undefined,
+      flex,
       wrap,
     },
   })

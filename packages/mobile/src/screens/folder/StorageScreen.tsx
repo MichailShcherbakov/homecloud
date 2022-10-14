@@ -5,22 +5,12 @@ import { StyleSheet } from "@theme/StyleSheet";
 import { useGetRootEntities } from "@/hooks/useGetRootEntities";
 import { Stack } from "@components/Stack";
 import { EntityCard } from "@components/cards/EntityCard";
-import { NavigationProp } from "@react-navigation/native";
 
-export interface StorageScreenProps {
-  navigation: NavigationProp<any>;
-}
+export interface StorageScreenProps {}
 
-export const StorageScreen: React.FC<StorageScreenProps> = ({ navigation }) => {
+export const StorageScreen: React.FC<StorageScreenProps> = ({}) => {
   const { data = [] } = useGetRootEntities();
   const { styles } = useStyle();
-
-  const onCardPress = React.useCallback(
-    (entity: Entity) => {
-      navigation.navigate("Folder");
-    },
-    [navigation]
-  );
 
   return (
     <SafeAreaView style={styles.root}>
@@ -28,11 +18,7 @@ export const StorageScreen: React.FC<StorageScreenProps> = ({ navigation }) => {
       <ScrollView style={styles.container}>
         <Stack column gap={3}>
           {data.map(entity => (
-            <EntityCard
-              key={entity.uuid}
-              entity={entity}
-              onPress={onCardPress}
-            />
+            <EntityCard key={entity.uuid} entity={entity} />
           ))}
         </Stack>
       </ScrollView>

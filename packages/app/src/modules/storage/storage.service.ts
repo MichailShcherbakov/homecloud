@@ -18,10 +18,7 @@ export class StorageService {
 
     const totalFileCount = files.length;
     const totalDirCount = dirs.length;
-
-    let totalSpaceSize = files.reduce((size, file) => size + file.size, 0);
-
-    while (totalSpaceSize > 1024) totalSpaceSize /= 1024;
+    const totalSpaceSize = files.reduce((size, file) => size + file.size, 0);
 
     return {
       total_dirs_count: totalDirCount,

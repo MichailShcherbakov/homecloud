@@ -21,7 +21,7 @@ export interface File extends IEntity {
 export interface Directory extends IEntity {
   isFile: false;
   isDirectory: true;
-  ext?: undefined;
+  ext: undefined;
 }
 
 export type Entity = File | Directory;

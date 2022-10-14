@@ -53,6 +53,7 @@ export async function deepReadDir(
           isFile: true,
           isDirectory: false,
         };
+
         entities.push(file);
       }
     })

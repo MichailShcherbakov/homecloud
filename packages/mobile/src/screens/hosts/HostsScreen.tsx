@@ -7,11 +7,30 @@ import { NotFoundHosts } from "@components/banners/NotFoundHosts";
 import { StyleSheet } from "@theme/StyleSheet";
 import { useNetworkScan } from "@/utils/network-scan/useNetworkScan";
 import { Stack } from "@components/Stack";
+import { NavigationProp } from "@react-navigation/native";
+import { Host } from "@/utils/network-scan/scan-hosts";
+import { useCurrentHost } from "@/hooks/useCurrentHost";
 
-export const HostsScreen: React.FC<{}> = () => {
+export interface StorageScreenProps {
+  navigation: NavigationProp<any>;
+}
+
+export const HostsScreen: React.FC<StorageScreenProps> = ({ navigation }) => {
   const { styles } = useStyle();
+  const { setCurrentHost } = useCurrentHost();
   const { isScanning, hosts } = useNetworkScan();
+
   const isEmpty = !hosts.length;
+
+  const onCardPress = React.useCallback(
+    (host: Host) => {
+      setCurrentHost(host);
+
+      navigation.navigate("Storage");
+    },
+    [navigation, setCurrentHost]
+  );
+
   return (
     <SafeAreaView style={styles.root}>
       <AppBar />
@@ -23,12 +42,9 @@ export const HostsScreen: React.FC<{}> = () => {
             {hosts.map(host => (
               <HostCard
                 key={host.name}
-                name={host.name}
-                ip={host.ip}
-                dirs={host.totalDirsCount}
-                files={host.totalFileCount}
-                space={host.totalSpaceUsed}
+                host={host}
                 variant="fill"
+                onPress={onCardPress}
               />
             ))}
           </Stack>

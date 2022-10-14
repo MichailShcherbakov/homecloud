@@ -8,37 +8,35 @@ import CloudIcon from "@assets/cloud_black_48dp.svg";
 import SpaceIcon from "@assets/donut_large_black_24dp.svg";
 import FileIcon from "@assets/description_black_24dp.svg";
 import FolderIcon from "@assets/folder_black_24dp.svg";
+import { Host } from "@/utils/network-scan/scan-hosts";
+import { compressBitesWithDimension } from "@/utils/compressBites";
 
 interface StyleProps {
   variant?: "fill" | "text";
 }
 
 export interface HostCardProps extends StyleProps {
-  name: string;
-  ip: string;
-  files: number;
-  dirs: number;
-  space: number;
+  host: Host;
   style?: ViewStyle;
-  onPress?: () => void;
+  onPress?: (host: Host) => void;
 }
 
 export const HostCard: React.FC<HostCardProps> = props => {
-  const { name, ip, files, dirs, space, style, variant, onPress } = props;
+  const { host, style, variant, onPress } = props;
 
   const { styles, cx } = useStyle({
     variant: variant ?? "text",
   });
 
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={() => onPress?.(host)}>
       <Stack column style={cx([styles.root, style])} gap={2}>
         <Stack row>
           <CloudIcon style={styles.icon} />
         </Stack>
         <Stack column>
-          <Text style={styles.title}>{name}</Text>
-          <Text style={styles.subtitle}>{ip}</Text>
+          <Text style={styles.title}>{host.name}</Text>
+          <Text style={styles.subtitle}>{host.ip}</Text>
         </Stack>
         <Stack row gap={1}>
           <Stack
@@ -49,7 +47,9 @@ export const HostCard: React.FC<HostCardProps> = props => {
             gap={1}
           >
             <FolderIcon style={styles.optionIcon} />
-            <Text style={styles.optionTitle}>{dirs} Folders</Text>
+            <Text style={styles.optionTitle}>
+              {host.totalDirsCount} Folders
+            </Text>
           </Stack>
           <Stack
             column
@@ -59,7 +59,7 @@ export const HostCard: React.FC<HostCardProps> = props => {
             gap={1}
           >
             <FileIcon style={styles.optionIcon} />
-            <Text style={styles.optionTitle}>{files} Files</Text>
+            <Text style={styles.optionTitle}>{host.totalFileCount} Files</Text>
           </Stack>
           <Stack
             column
@@ -69,7 +69,9 @@ export const HostCard: React.FC<HostCardProps> = props => {
             gap={1}
           >
             <SpaceIcon style={styles.optionIcon} />
-            <Text style={styles.optionTitle}>{space.toFixed(2)} GB</Text>
+            <Text style={styles.optionTitle}>
+              {compressBitesWithDimension(host.totalSpaceUsed)}
+            </Text>
           </Stack>
         </Stack>
       </Stack>

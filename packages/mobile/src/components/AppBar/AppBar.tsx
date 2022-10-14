@@ -1,10 +1,12 @@
 import React from "react";
-import { StyleSheet, Text } from "react-native";
+import { Text } from "react-native";
 import { Stack } from "@components/Stack";
 import LogoIcon from "@assets/logo_24dp.svg";
 import SettingsIcon from "@assets/settings_black_24dp.svg";
+import { StyleSheet } from "@theme/StyleSheet";
 
 export const AppBar: React.FC<{}> = () => {
+  const { styles } = useStyle();
   return (
     <Stack
       row
@@ -14,7 +16,7 @@ export const AppBar: React.FC<{}> = () => {
       style={styles.root}
     >
       <Stack row alignItems="center">
-        <LogoIcon style={styles.logoIcon} width={28} height={28} />
+        <LogoIcon style={styles.logoIcon} />
         <Text style={styles.logoTitle}>Home Cloud</Text>
       </Stack>
       <Stack row alignItems="center">
@@ -24,16 +26,18 @@ export const AppBar: React.FC<{}> = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const useStyle = StyleSheet()(({ theme }) => ({
   root: {
-    padding: 24,
+    padding: theme.spacing(3),
   },
   logoIcon: {
-    marginRight: 16,
+    width: 28,
+    height: 28,
+    marginRight: theme.spacing(2),
   },
   logoTitle: {
-    color: "#2262C6",
     fontSize: 20,
     fontWeight: "700",
+    color: "#2262C6",
   },
-});
+}));
