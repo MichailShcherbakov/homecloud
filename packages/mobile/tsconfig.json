@@ -1,13 +1,6 @@
 {
-  "extends": "@tsconfig/react-native/tsconfig.json",
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "skipLibCheck": true,
-    "baseUrl": ".",
-    "paths": {
-      "@components/*": ["src/components/*"],
-      "@assets/*": ["src/assets/*"],
-      "@theme/*": ["src/theme/*"],
-      "@/*": ["src/*"]
-    }
+    "strict": true
   }
 }
