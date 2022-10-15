@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import IconSvg from './src/assets/logo_24dp.svg';
+import IconSvg from '@/assets/logo_24dp.svg';
 
 export default function App() {
   return (
