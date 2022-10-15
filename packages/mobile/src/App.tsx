@@ -7,6 +7,7 @@ import { Provider as ReduxProvider } from "react-redux";
 import { store } from "./store";
 import { StorageScreen } from "./screens/storage/StorageScreen";
 import { QueryClient, QueryClientProvider } from "react-query";
+import { DirectoryScreen } from "./screens/directory/DirectoryScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +25,7 @@ export const App: React.FC<{}> = () => {
             >
               <Stack.Screen name="Hosts" component={HostsScreen} />
               <Stack.Screen name="Storage" component={StorageScreen} />
+              <Stack.Screen name="Directory" component={DirectoryScreen} />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>

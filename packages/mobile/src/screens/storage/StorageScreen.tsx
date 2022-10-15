@@ -6,20 +6,27 @@ import { useGetRootEntities } from "@/hooks/useGetRootEntities";
 import { Stack } from "@components/Stack";
 import { EntityCard } from "@components/cards/EntityCard";
 import { NavigationProp } from "@react-navigation/native";
+import { useCurrentDirectory } from "@/hooks/useCurrentDirectory";
+import { Entity } from "@/types";
 
 export interface StorageScreenProps {
   navigation: NavigationProp<any>;
 }
 
 export const StorageScreen: React.FC<StorageScreenProps> = ({ navigation }) => {
+  const { setCurrentDirectory } = useCurrentDirectory();
   const { data = [] } = useGetRootEntities();
   const { styles } = useStyle();
 
   const onCardPress = React.useCallback(
     (entity: Entity) => {
-      navigation.navigate("Folder");
+      if (entity.isFile) return;
+
+      setCurrentDirectory(entity);
+
+      navigation.navigate("Directory");
     },
-    [navigation]
+    [navigation, setCurrentDirectory]
   );
 
   return (

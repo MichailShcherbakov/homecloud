@@ -2,14 +2,14 @@ import React from "react";
 import { SafeAreaView, ScrollView } from "react-native";
 import { AppBar } from "@components/AppBar";
 import { StyleSheet } from "@theme/StyleSheet";
-import { useGetRootEntities } from "@/hooks/useGetRootEntities";
 import { Stack } from "@components/Stack";
 import { EntityCard } from "@components/cards/EntityCard";
+import { useGetCurrentDirectoryEntities } from "@/hooks/useGetCurrentDirectoryEntities";
 
-export interface StorageScreenProps {}
+export interface DirectoryScreenProps {}
 
-export const StorageScreen: React.FC<StorageScreenProps> = ({}) => {
-  const { data = [] } = useGetRootEntities();
+export const DirectoryScreen: React.FC<DirectoryScreenProps> = ({}) => {
+  const { data = [] } = useGetCurrentDirectoryEntities();
   const { styles } = useStyle();
 
   return (

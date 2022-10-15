@@ -34,10 +34,10 @@ export async function deepReadDir(
         const entries = await deepReadDir(
           globalPath,
           localPath,
-          baseEntity.uuid
+          directory.uuid
         );
 
-        baseEntity.size = entries.reduce(
+        directory.size = entries.reduce(
           (folderSize, entry) => folderSize + entry.size,
           0
         );
