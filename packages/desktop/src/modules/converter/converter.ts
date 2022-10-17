@@ -4,7 +4,7 @@ import { EventListener } from "@/utils/event-listener";
 import { readDir } from "@/utils/read-dir";
 import { join } from "path";
 import hidefile from "hidefile";
-import { mkdir } from "fs/promises";
+import { mkdir, rm } from "fs/promises";
 import { ConfigService } from "../config/config.service";
 import { QueueManager } from "../queue/queue.manager";
 
@@ -55,6 +55,20 @@ export class Converter extends EventListener {
       includeDirPaths: ["/.media/"],
       onlyFiles: true,
     });
+
+    const shouldToBeRemoved = converted.filter(
+      c =>
+        !entities.find(e => `${c.parentDirPath}${e.ext}` === `/.media${e.path}`)
+    );
+
+    await Promise.all(
+      shouldToBeRemoved.map(e =>
+        rm(join(globalRootPath, e.parentDirPath), {
+          recursive: true,
+          force: true,
+        })
+      )
+    );
 
     const shouldToBeConverted = entities.filter(
       e =>
