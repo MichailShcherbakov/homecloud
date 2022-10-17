@@ -4,6 +4,7 @@ export interface IEntity {
   name: string;
   size: number;
   parentDirUuid: string | null;
+  parentDirPath: string;
 
   /// a file
   isFile: boolean;

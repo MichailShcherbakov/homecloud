@@ -6,7 +6,7 @@ import {
   Req,
   Res,
 } from "@nestjs/common";
-import { createReadStream, statSync } from "fs";
+import { createReadStream } from "fs";
 import { StorageService } from "./storage.service";
 import type { Request, Response } from "express";
 
@@ -29,39 +29,32 @@ export class StorageController {
     return this.storageService.getDirEntities(uuid);
   }
 
+  @Get("/files/:uuid/:segment")
+  async getFileSegment(
+    @Param("uuid", ParseUUIDPipe) uuid: string,
+    @Param("segment") segment: string,
+    @Req() req: Request,
+    @Res() res: Response
+  ) {
+    const path = `C:/Users/Michail/Downloads/homecloud/media/sample_1280x720_surfing_with_audio-test/${segment}`;
+
+    res.contentType("video/MP2T");
+
+    createReadStream(path).pipe(res);
+  }
+
   @Get("/files/:uuid")
   async getFile(
     @Param("uuid", ParseUUIDPipe) uuid: string,
     @Req() req: Request,
     @Res() res: Response
   ) {
-    const path = await this.storageService.getGlobaFilePath(uuid);
+    /* const path = await this.storageService.getGlobaFilePath(uuid); */
+    const path =
+      "C:/Users/Michail/Downloads/homecloud/media/sample_1280x720_surfing_with_audio-test/sample_1280x720_surfing_with_audio-test.m3u8";
 
-    const stat = statSync(path);
-    const fileSize = stat.size;
-    const range = req.headers.range;
+    res.contentType("application/vnd.apple.mpegurl");
 
-    if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      const chunksize = end - start + 1;
-      const file = createReadStream(path, { start, end });
-      const head = {
-        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-        "Accept-Ranges": "bytes",
-        "Content-Length": chunksize,
-        "Content-Type": "video/mp4",
-      };
-      res.writeHead(206, head);
-      file.pipe(res);
-    } else {
-      const head = {
-        "Content-Length": fileSize,
-        "Content-Type": "video/mp4",
-      };
-      res.writeHead(200, head);
-      createReadStream(path).pipe(res);
-    }
+    createReadStream(path).pipe(res);
   }
 }

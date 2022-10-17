@@ -5,9 +5,7 @@ import { createApp } from "./utils/createApp";
 let app: INestApplication;
 
 export async function bootstrap() {
-  app = await createApp(AppModule);
-
-  await app.listen(12536);
+  return await createApp(AppModule);
 }
 
 export async function shutdown() {

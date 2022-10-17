@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "../config/config.service";
 import { Entity, File, Directory } from "./type";
-import { deepReadDir } from "./utils/deep-read-dir";
+import { readDir } from "../../utils/read-dir";
 
 @Injectable()
 export class LocalStorage implements OnModuleInit, OnModuleDestroy {
@@ -17,7 +17,9 @@ export class LocalStorage implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const rootPath = this.configService.get("path", "root");
 
-    this.entities = await deepReadDir(rootPath);
+    this.entities = (await readDir(rootPath)).filter(
+      e => e.isDirectory || (e.isFile && e.ext === ".m3u8")
+    );
   }
 
   onModuleDestroy() {

@@ -23,7 +23,7 @@ export const App: React.FC<{}> = () => {
         <SafeAreaProvider>
           <NavigationContainer>
             <Stack.Navigator
-              initialRouteName="Hosts"
+              initialRouteName="VideoPlayer"
               screenOptions={{ headerShown: false }}
             >
               <Stack.Screen name="Hosts" component={HostsScreen} />
