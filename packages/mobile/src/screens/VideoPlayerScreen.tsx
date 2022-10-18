@@ -15,15 +15,13 @@ export interface VideoPlayerScreenProps {
   };
 }
 
-export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = (
-  {
-    /*   route: {
+export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = ({
+  route: {
     params: { videoFile },
-  }, */
-  }
-) => {
+  },
+}) => {
   const { styles } = useStyle();
-  /*   const { currentHost } = useCurrentHost(); */
+  const { currentHost } = useCurrentHost();
 
   return (
     <SafeAreaView style={styles.root}>
@@ -32,8 +30,7 @@ export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = (
         resizeMode={ResizeMode.CONTAIN}
         shouldPlay
         source={{
-          // uri: `http://${currentHost?.ip}:12536/storage/files/${videoFile.uuid}`,
-          uri: `http://192.168.1.106:12536/storage/files/9abed1e9-8891-4bad-be4c-25e7fb26bff7/`,
+          uri: `http://${currentHost?.ip}:12536/storage/files/${videoFile.uuid}/`,
           overrideFileExtensionAndroid: "m3u8",
         }}
         useNativeControls

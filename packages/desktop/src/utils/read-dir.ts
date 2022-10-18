@@ -3,6 +3,8 @@ import * as fs from "fs/promises";
 import { join, extname } from "path";
 import * as uuid from "uuid";
 import { access } from "./access";
+import getFolderSize from "get-folder-size";
+import { getDirSize } from "./get-dir-size";
 
 export interface ReadDirOptions {
   localRootPath?: string;
@@ -90,6 +92,10 @@ export async function readDir(
             isFile: true,
             isDirectory: false,
           };
+
+          file.size = await getDirSize(
+            join(globalRootPath, file.parentDirPath)
+          );
 
           entities.push(file);
 
