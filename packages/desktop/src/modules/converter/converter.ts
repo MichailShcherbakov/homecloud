@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, OnModuleInit } from "@nestjs/common";
 import { toHLS } from "@/utils/to-hls";
 import { EventListener } from "@/utils/event-listener";
 import { readDir } from "@/utils/read-dir";
@@ -7,6 +7,8 @@ import hidefile from "hidefile";
 import { mkdir, rm } from "fs/promises";
 import { ConfigService } from "../config/config.service";
 import { QueueManager } from "../queue/queue.manager";
+import chokidar from "chokidar";
+import { access } from "@/utils/access";
 
 export interface ConverterFile {
   inputFilePath: string;
@@ -14,7 +16,9 @@ export interface ConverterFile {
 }
 
 @Injectable()
-export class Converter extends EventListener {
+export class Converter extends EventListener implements OnModuleInit {
+  private readonly watcher: chokidar.FSWatcher;
+
   constructor(
     private readonly config: ConfigService,
     private readonly queue: QueueManager
@@ -29,6 +33,92 @@ export class Converter extends EventListener {
     });
     this.queue.on("failed", () => {
       this.emit("failed");
+    });
+
+    this.watcher = chokidar.watch(this.config.get("path", "root"), {
+      ignored: /(.+)\.media\/(.+)/,
+    });
+  }
+
+  onModuleInit() {
+    this.watcher.on("add", async globalPath => {
+      console.log("add detected");
+
+      const globalRootPath = this.config.get("path", "root");
+      const localPath = globalPath
+        .replaceAll("\\", "/")
+        .replace(globalRootPath, "");
+
+      const rawPath = localPath.split("/");
+
+      const filename = rawPath[rawPath.length - 1].replace(/\.[^/.]+$/, "");
+
+      rawPath.pop();
+
+      const localDirPath = rawPath.join("/");
+
+      const isFileExists = await access(
+        join(
+          globalRootPath,
+          ".media",
+          localDirPath,
+          filename,
+          `${filename}.m3u8`
+        )
+      );
+
+      if (isFileExists) return;
+
+      const inputFilePath = globalPath;
+      const outputDir = join(
+        globalRootPath,
+        `.media${localDirPath}/${filename}`
+      );
+      const outputFilePath = join(outputDir, `${filename}.m3u8`);
+
+      await mkdir(outputDir, { recursive: true });
+
+      this.addFile({
+        inputFilePath,
+        outputFilePath,
+      });
+
+      console.log("added");
+    });
+    this.watcher.on("unlink", async globalPath => {
+      console.log("delete detected");
+
+      const globalRootPath = this.config.get("path", "root");
+      const localPath = globalPath
+        .replaceAll("\\", "/")
+        .replace(globalRootPath, "");
+
+      const rawPath = localPath.split("/");
+
+      const filename = rawPath[rawPath.length - 1].replace(/\.[^/.]+$/, "");
+
+      rawPath.pop();
+
+      const localDirPath = rawPath.join("/");
+
+      const isFileExists = await access(
+        join(
+          globalRootPath,
+          ".media",
+          localDirPath,
+          filename,
+          `${filename}.m3u8`
+        )
+      );
+
+      if (!isFileExists) return;
+
+      await rm(join(globalRootPath, ".media", localDirPath, filename), {
+        recursive: true,
+        force: true,
+      });
+
+      console.log("deleted");
     });
   }
 

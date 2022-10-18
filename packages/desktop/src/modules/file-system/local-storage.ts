@@ -17,9 +17,9 @@ export class LocalStorage implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const rootPath = this.configService.get("path", "root");
 
-    this.entities = (await readDir(rootPath)).filter(
-      e => e.isDirectory || (e.isFile && e.ext === ".m3u8")
-    );
+    this.entities = await readDir(rootPath, {
+      includeExts: [".m3u8"],
+    });
   }
 
   onModuleDestroy() {
