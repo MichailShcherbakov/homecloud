@@ -7,16 +7,46 @@ import {
 import { ConfigService } from "../config/config.service";
 import { Entity, File, Directory } from "./type";
 import { readDir } from "../../utils/read-dir";
-import { join } from "path";
+import { join, extname } from "path";
+import chokidar from "chokidar";
 
 @Injectable()
 export class LocalStorage implements OnModuleInit, OnModuleDestroy {
+  private readonly watcher: chokidar.FSWatcher;
   private entities: Entity[] = [];
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly config: ConfigService) {
+    this.watcher = chokidar.watch(
+      join(this.config.get("path", "root"), ".media")
+    );
+  }
 
   async onModuleInit() {
-    const rootPath = this.configService.get("path", "root");
+    const rootPath = this.config.get("path", "root");
+
+    this.watcher.on("add", async globalPath => {
+      const ext = extname(globalPath);
+
+      if (ext !== ".m3u8") return;
+
+      this.entities = await readDir(join(rootPath, ".media"), {
+        includeExts: [".m3u8"],
+        collapseFolders: true,
+        collapseExt: ".m3u8",
+      });
+    });
+
+    this.watcher.on("unlink", async globalPath => {
+      const ext = extname(globalPath);
+
+      if (ext !== ".m3u8") return;
+
+      this.entities = await readDir(join(rootPath, ".media"), {
+        includeExts: [".m3u8"],
+        collapseFolders: true,
+        collapseExt: ".m3u8",
+      });
+    });
 
     this.entities = await readDir(join(rootPath, ".media"), {
       includeExts: [".m3u8"],

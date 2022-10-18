@@ -85,6 +85,7 @@ export class Converter extends EventListener implements OnModuleInit {
 
       console.log("added");
     });
+
     this.watcher.on("unlink", async globalPath => {
       console.log("delete detected");
 
