@@ -2,6 +2,7 @@ import { Directory, File, Entity } from "../modules/file-system/type";
 import * as fs from "fs/promises";
 import { join, extname } from "path";
 import * as uuid from "uuid";
+import { access } from "./access";
 
 export interface ReadDirOptions {
   localRootPath?: string;
@@ -12,6 +13,8 @@ export interface ReadDirOptions {
   excludeDirPaths?: string[];
   onlyFiles?: boolean;
   onlyDirs?: boolean;
+  collapseFolders?: boolean;
+  collapseExt?: string;
 }
 
 export async function readDir(
@@ -27,6 +30,8 @@ export async function readDir(
     excludeDirPaths = [],
     onlyFiles,
     onlyDirs,
+    collapseFolders,
+    collapseExt,
   } = options;
   const rootDir = await fs.readdir(globalRootPath, { withFileTypes: true });
   const entities: Entity[] = [];
@@ -61,6 +66,36 @@ export async function readDir(
           isFile: false,
           isDirectory: true,
         };
+
+        if (
+          collapseFolders &&
+          (await access(join(globalPath, `${entity.name}${collapseExt}`)))
+        ) {
+          const ext = collapseExt;
+
+          if (
+            /// should be excluded
+            excludeExts.find(e => e === ext) ||
+            /// not on the white list
+            (includeExts.length && !includeExts.find(e => e === ext))
+          )
+            return;
+
+          const file: File = {
+            ...baseEntity,
+            path: `${localPath}/${entity.name}${collapseExt}`,
+            parentDirPath: localPath,
+            name: baseEntity.name.replace(/\.[^/.]+$/, ""),
+            ext: ext,
+            isFile: true,
+            isDirectory: false,
+          };
+
+          entities.push(file);
+
+          return;
+        }
+
         const entries = await readDir(globalPath, {
           ...options,
           localRootPath: localPath,

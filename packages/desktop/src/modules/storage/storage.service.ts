@@ -42,6 +42,6 @@ export class StorageService {
 
     const rootPath = this.configService.get("path", "root");
 
-    return join(rootPath, file.path);
+    return join(rootPath, ".media", file.path);
   }
 }

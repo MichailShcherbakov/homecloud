@@ -7,6 +7,7 @@ import {
 import { ConfigService } from "../config/config.service";
 import { Entity, File, Directory } from "./type";
 import { readDir } from "../../utils/read-dir";
+import { join } from "path";
 
 @Injectable()
 export class LocalStorage implements OnModuleInit, OnModuleDestroy {
@@ -17,8 +18,10 @@ export class LocalStorage implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const rootPath = this.configService.get("path", "root");
 
-    this.entities = await readDir(rootPath, {
+    this.entities = await readDir(join(rootPath, ".media"), {
       includeExts: [".m3u8"],
+      collapseFolders: true,
+      collapseExt: ".m3u8",
     });
   }
 

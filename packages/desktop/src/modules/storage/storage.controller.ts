@@ -1,14 +1,8 @@
-import {
-  Controller,
-  Get,
-  Param,
-  ParseUUIDPipe,
-  Req,
-  Res,
-} from "@nestjs/common";
+import { Controller, Get, Param, ParseUUIDPipe, Res } from "@nestjs/common";
 import { createReadStream } from "fs";
 import { StorageService } from "./storage.service";
-import type { Request, Response } from "express";
+import type { Response } from "express";
+import { join } from "path";
 
 @Controller("/storage")
 export class StorageController {
@@ -33,25 +27,26 @@ export class StorageController {
   async getFileSegment(
     @Param("uuid", ParseUUIDPipe) uuid: string,
     @Param("segment") segment: string,
-    @Req() req: Request,
     @Res() res: Response
   ) {
-    const path = `C:/Users/Michail/Downloads/homecloud/media/sample_1280x720_surfing_with_audio-test/${segment}`;
+    const path = await this.storageService.getGlobaFilePath(uuid);
+    const rawPath = path.replaceAll("\\", "/").split("/");
+
+    rawPath.pop();
+
+    const segmentPath = join(rawPath.join("/"), segment);
 
     res.contentType("video/MP2T");
 
-    createReadStream(path).pipe(res);
+    createReadStream(segmentPath).pipe(res);
   }
 
   @Get("/files/:uuid")
   async getFile(
     @Param("uuid", ParseUUIDPipe) uuid: string,
-    @Req() req: Request,
     @Res() res: Response
   ) {
-    /* const path = await this.storageService.getGlobaFilePath(uuid); */
-    const path =
-      "C:/Users/Michail/Downloads/homecloud/media/sample_1280x720_surfing_with_audio-test/sample_1280x720_surfing_with_audio-test.m3u8";
+    const path = await this.storageService.getGlobaFilePath(uuid);
 
     res.contentType("application/vnd.apple.mpegurl");
 
