@@ -24,10 +24,16 @@
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "package": "com.michail_shcherbakov.homecloud"
     },
     "web": {
       "favicon": "./src/assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c711b6f1-aa86-4d44-89ad-5ce687c19cde"
+      }
     }
   }
 }
