@@ -1,7 +1,10 @@
 import { INestApplication } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import * as winston from "winston";
-import { WinstonModule } from "nest-winston";
+import {
+  utilities as nestWinstonModuleUtilities,
+  WinstonModule,
+} from "nest-winston";
 
 export interface IApplication extends INestApplication {}
 
@@ -12,6 +15,16 @@ export async function createApp<M>(rootModule: M): Promise<IApplication> {
         level: "info",
         format: winston.format.json(),
         transports: [
+          new winston.transports.Console({
+            format: winston.format.combine(
+              winston.format.timestamp(),
+              winston.format.ms(),
+              nestWinstonModuleUtilities.format.nestLike("App", {
+                colors: true,
+                prettyPrint: true,
+              })
+            ),
+          }),
           new winston.transports.File({
             dirname: "logs",
             filename: "error.log",

@@ -1,6 +1,6 @@
 import React from "react";
 import { Stack, Typography } from "@mui/material";
-import LogoIcon from "@/client/assets/logo.svg";
+import { ReactComponent as LogoIcon } from "@client/assets/logo.svg";
 import { makeStyles } from "tss-react/mui";
 
 export interface LogoProps {}
@@ -8,9 +8,14 @@ export interface LogoProps {}
 export const Logo: React.FC<LogoProps> = () => {
   const { classes } = useStyle();
   return (
-    <Stack className={classes.root}>
+    <Stack
+      direction="row"
+      alignItems="center"
+      spacing={2}
+      className={classes.root}
+    >
       <LogoIcon className={classes.icon} />
-      <Stack>
+      <Stack direction="row" alignItems="center">
         <Typography className={classes.iconTitle1}>Home</Typography>
         <Typography className={classes.iconTitle2}>Cloud</Typography>
       </Stack>
@@ -20,11 +25,18 @@ export const Logo: React.FC<LogoProps> = () => {
 
 const useStyle = makeStyles()({
   root: {},
-  icon: {},
+  icon: {
+    width: 64,
+    height: 64,
+  },
   iconTitle1: {
-    color: "#3772ff",
+    color: "#0d2862",
+    fontWeight: 700,
+    fontSize: 22,
   },
   iconTitle2: {
     color: "#8693b1",
+    fontWeight: 700,
+    fontSize: 22,
   },
 });

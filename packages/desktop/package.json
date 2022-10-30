@@ -1,90 +1,21 @@
 {
-  "name": "homecloud",
-  "productName": "homecloud",
+  "name": "@homecloud/desctop",
+  "productName": "HomeCloud",
+  "private": true,
   "version": "0.0.1",
   "description": "Your personal home storage",
-  "main": ".webpack/main",
-  "scripts": {
-    "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "publish": "electron-forge publish",
-    "lint": "eslint \"src/**/*.ts\" --fix",
-    "fmt": "prettier --write \"src/**/*.ts\"",
-    "fmt:check": "prettier --check \"src/**/*.ts\""
-  },
-  "keywords": [],
   "author": {
     "name": "MichailShcherbakov",
     "email": "50011226+MichailShcherbakov@users.noreply.github.com"
   },
   "license": "MIT",
-  "config": {
-    "forge": {
-      "packagerConfig": {},
-      "makers": [
-        {
-          "name": "@electron-forge/maker-wix",
-          "config": {
-            "name": "homecloud",
-            "exe": "homecloud",
-            "version": "0.0.1",
-            "language": 1033,
-            "manufacturer": "HomeCloud Comp.",
-            "appIconPath": "./public/icon.ico",
-            "description": "Your personal home storage"
-          }
-        }
-      ],
-      "plugins": [
-        {
-          "name": "@electron-forge/plugin-webpack",
-          "config": {
-            "mainConfig": "./webpack.main.config.js",
-            "renderer": {
-              "config": "./webpack.renderer.config.js",
-              "entryPoints": [
-                {
-                  "html": "./src/index.html",
-                  "js": "./src/renderer.ts",
-                  "name": "main_window",
-                  "preload": {
-                    "js": "./src/preload.ts"
-                  }
-                }
-              ]
-            }
-          }
-        }
-      ]
-    }
+  "main": "dist-electron/electron/main/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && electron-builder"
   },
-  "devDependencies": {
-    "@electron-forge/cli": "^6.0.0-beta.67",
-    "@electron-forge/maker-deb": "^6.0.0-beta.67",
-    "@electron-forge/maker-rpm": "^6.0.0-beta.67",
-    "@electron-forge/maker-squirrel": "^6.0.0-beta.67",
-    "@electron-forge/maker-zip": "^6.0.0-beta.67",
-    "@electron-forge/plugin-webpack": "6.0.0-beta.67",
-    "@svgr/webpack": "^6.5.1",
-    "@types/react": "^18.0.22",
-    "@types/react-dom": "^18.0.7",
-    "@typescript-eslint/eslint-plugin": "^5.0.0",
-    "@typescript-eslint/parser": "^5.0.0",
-    "@vercel/webpack-asset-relocator-loader": "1.7.3",
-    "css-loader": "^6.0.0",
-    "electron": "21.2.0",
-    "eslint": "^8.0.1",
-    "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-import": "^2.25.0",
-    "eslint-plugin-prettier": "^4.2.1",
-    "eslint-plugin-tss-unused-classes": "^0.0.4",
-    "fork-ts-checker-webpack-plugin": "^7.2.1",
-    "node-loader": "^2.0.0",
-    "prettier": "^2.7.1",
-    "style-loader": "^3.0.0",
-    "ts-loader": "^9.2.2",
-    "typescript": "~4.5.4"
+  "engines": {
+    "node": "^14.18.0 || >=16.0.0"
   },
   "dependencies": {
     "@emotion/react": "^11.10.5",
@@ -94,14 +25,40 @@
     "@nestjs/common": "^9.1.6",
     "@nestjs/core": "^9.1.6",
     "@nestjs/platform-express": "^9.1.6",
-    "electron-squirrel-startup": "^1.0.0",
     "nest-winston": "^1.8.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
     "react-router-dom": "^6.4.2",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.5.7",
     "tss-react": "^4.4.1",
+    "vite-plugin-node": "^1.0.0",
+    "vite-plugin-svgr": "^2.2.2",
     "winston": "^3.8.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.21",
+    "@types/react-dom": "^18.0.6",
+    "@typescript-eslint/eslint-plugin": "^5.41.0",
+    "@typescript-eslint/parser": "^5.41.0",
+    "@vitejs/plugin-react": "^2.1.0",
+    "electron": "^21.1.0",
+    "electron-builder": "^23.3.3",
+    "eslint": "^8.26.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-tss-unused-classes": "^0.0.4",
+    "prettier": "^2.7.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sass": "^1.55.0",
+    "typescript": "^4.8.4",
+    "vite": "^3.1.4",
+    "vite-electron-plugin": "^0.4.6",
+    "vite-plugin-electron-renderer": "^0.10.1"
+  },
+  "debug": {
+    "env": {
+      "VITE_DEV_SERVER_URL": "http://127.0.0.1:7777"
+    }
   }
 }
