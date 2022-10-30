@@ -1,0 +1,36 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Inter", sans-serif;
+}
+
+*:focus {
+  outline-style: none;
+}
+
+html {
+  scroll-behavior: smooth;
+  min-width: 360px;
+}
+
+body {
+  overflow-x: auto;
+  padding: 0 !important;
+}
+
+a {
+  text-decoration: none;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+img {
+  user-select: none;
+}
+
+button:focus {
+  outline-style: none;
+}

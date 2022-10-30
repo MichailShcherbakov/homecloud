@@ -12,10 +12,13 @@
     "plugin:import/electron",
     "plugin:import/typescript",
     "plugin:prettier/recommended",
-    "prettier"
+    "prettier",
+    "prettier/@typescript-eslint"
   ],
+  "plugins": ["tss-unused-classes"],
   "parser": "@typescript-eslint/parser",
   "rules": {
+    "tss-unused-classes/unused-classes": "warn",
     "@typescript-eslint/no-empty-function": "off",
     "@typescript-eslint/no-empty-interface": "off",
     "@typescript-eslint/no-unused-vars": [

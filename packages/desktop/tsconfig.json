@@ -16,8 +16,10 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "paths": {
-      "*": ["node_modules/*"]
-    }
+      "@/public/*": ["./public/*"],
+      "@/*": ["./src/*"]
+    },
+    "typeRoots": ["./src/@types", "./node_modules/@types"]
   },
   "include": ["src/**/*"]
 }

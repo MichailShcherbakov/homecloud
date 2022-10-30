@@ -1,0 +1,64 @@
+{
+  "name": "@homecloud/desctop",
+  "productName": "HomeCloud",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Your personal home storage",
+  "author": {
+    "name": "MichailShcherbakov",
+    "email": "50011226+MichailShcherbakov@users.noreply.github.com"
+  },
+  "license": "MIT",
+  "main": "dist-electron/electron/main/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && electron-builder"
+  },
+  "engines": {
+    "node": "^14.18.0 || >=16.0.0"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.10.5",
+    "@emotion/styled": "^11.10.5",
+    "@mui/icons-material": "^5.10.9",
+    "@mui/material": "^5.10.11",
+    "@nestjs/common": "^9.1.6",
+    "@nestjs/core": "^9.1.6",
+    "@nestjs/platform-express": "^9.1.6",
+    "nest-winston": "^1.8.0",
+    "react-router-dom": "^6.4.2",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.5.7",
+    "tss-react": "^4.4.1",
+    "vite-plugin-node": "^1.0.0",
+    "vite-plugin-svgr": "^2.2.2",
+    "winston": "^3.8.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.21",
+    "@types/react-dom": "^18.0.6",
+    "@typescript-eslint/eslint-plugin": "^5.41.0",
+    "@typescript-eslint/parser": "^5.41.0",
+    "@vitejs/plugin-react": "^2.1.0",
+    "electron": "^21.1.0",
+    "electron-builder": "^23.3.3",
+    "eslint": "^8.26.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-tss-unused-classes": "^0.0.4",
+    "prettier": "^2.7.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sass": "^1.55.0",
+    "typescript": "^4.8.4",
+    "vite": "^3.1.4",
+    "vite-electron-plugin": "^0.4.6",
+    "vite-plugin-electron-renderer": "^0.10.1"
+  },
+  "debug": {
+    "env": {
+      "VITE_DEV_SERVER_URL": "http://127.0.0.1:7777"
+    }
+  }
+}
