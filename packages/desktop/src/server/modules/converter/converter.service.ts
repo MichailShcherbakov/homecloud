@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { toHLS } from "@server/utils/to-hls";
 import { EventListener } from "@server/utils/event-listener";
 import { readDir } from "@server/utils/read-dir";
@@ -21,17 +21,24 @@ export class Converter extends EventListener implements OnModuleInit {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly queue: QueueManager
+    private readonly queue: QueueManager,
+    private readonly logger: Logger
   ) {
     super();
 
     this.queue.on("start", () => {
+      this.logger.log("Start of conversion...", Converter.name);
+
       this.emit("start", { shouldToBeConvertedAmount: this.queue.getCount() });
     });
     this.queue.on("done", file => {
+      this.logger.log("The conversion is done.", Converter.name);
+
       this.emit("done", file);
     });
     this.queue.on("failed", () => {
+      this.logger.error("The conversion is failed.", Converter.name);
+
       this.emit("failed");
     });
 
@@ -42,7 +49,7 @@ export class Converter extends EventListener implements OnModuleInit {
 
   onModuleInit() {
     this.watcher.on("add", async globalPath => {
-      console.log("add detected");
+      this.logger.log(`The entity was detected: ${globalPath}`, Converter.name);
 
       const globalRootPath = this.config.getRootPath();
       const localPath = globalPath
@@ -83,11 +90,14 @@ export class Converter extends EventListener implements OnModuleInit {
         outputFilePath,
       });
 
-      console.log("added");
+      this.logger.log(
+        `The entity was added to queue: - from: \n${inputFilePath} - to: \n${outputFilePath}`,
+        Converter.name
+      );
     });
 
     this.watcher.on("unlink", async globalPath => {
-      console.log("delete detected");
+      this.logger.log(`Deleting the entity was detected`, Converter.name);
 
       const globalRootPath = this.config.getRootPath();
       const localPath = globalPath
@@ -119,13 +129,16 @@ export class Converter extends EventListener implements OnModuleInit {
         force: true,
       });
 
-      console.log("deleted");
+      this.logger.log(`The entity was deleted`, Converter.name);
     });
   }
 
   public addFile(file: ConverterFile) {
     this.queue.add(async () => {
       await toHLS(file.inputFilePath, file.outputFilePath);
+
+      this.logger.log(`Conversion completed successfully`, Converter.name);
+
       return { file, shouldToBeConvertedAmount: this.queue.getCount() };
     });
   }

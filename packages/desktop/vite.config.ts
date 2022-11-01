@@ -15,6 +15,7 @@ const alias = {
   "@electron": join(__dirname, "electron"),
   "@client": join(__dirname, "src/client"),
   "@server": join(__dirname, "src/server"),
+  "@common": join(__dirname, "src/common"),
 };
 
 export default defineConfig({

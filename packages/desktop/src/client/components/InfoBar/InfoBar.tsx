@@ -6,30 +6,51 @@ import { ReactComponent as MovieIcon } from "@client/assets/movie_24dp.svg";
 import { ReactComponent as FolderIcon } from "@client/assets/folder_24dp.svg";
 import { ReactComponent as FileIcon } from "@client/assets/file_24dp.svg";
 import { Category } from "./Category";
+import { useGetStatistics } from "@client/hooks/useGetStatistics";
+import { compressBitesWithDimension } from "@common/utils/compressBites";
 
 export interface InfoBarProps {}
 
 export const InfoBar: React.FC<InfoBarProps> = () => {
   const { classes } = useStyle();
+
+  const { isLoading, isError, statistics } = useGetStatistics();
+
+  if (isLoading || isError || !statistics) return null;
+
   return (
     <Stack className={classes.root}>
       <Stack direction="column" spacing={2}>
         <Typography className={classes.title}>Storage</Typography>
-        <Category icon={DonutIcon} title="Usage" subtitle="112.7 GB" />
+        <Category
+          icon={DonutIcon}
+          title="Usage"
+          subtitle={compressBitesWithDimension(statistics.total_space_size)}
+        />
         <Category
           icon={FolderIcon}
           title="Folders"
-          subtitle="1,012 folders | 112.7 GB"
+          subtitle={`${
+            statistics.total_dirs_count
+          } folders | ${compressBitesWithDimension(
+            statistics.total_space_size
+          )}`}
         />
         <Category
           icon={MovieIcon}
           title="Videos"
-          subtitle="1,012 files | 12.7 GB"
+          subtitle={`${
+            statistics.total_file_count
+          } movies | ${compressBitesWithDimension(
+            statistics.total_space_size
+          )}`}
         />
         <Category
           icon={FileIcon}
           title="Other files"
-          subtitle="1,012 files | 12.7 GB"
+          subtitle={`${
+            statistics.total_file_count
+          } files | ${compressBitesWithDimension(statistics.total_space_size)}`}
         />
       </Stack>
     </Stack>

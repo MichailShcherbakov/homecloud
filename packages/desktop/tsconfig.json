@@ -17,12 +17,14 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "strictPropertyInitialization": false,
     "paths": {
       "@/*": ["src/*"],
       "@public/*": ["public/*"],
       "@electron/*": ["electron/*"],
       "@client/*": ["src/client/*"],
-      "@server/*": ["src/server/*"]
+      "@server/*": ["src/server/*"],
+      "@common/*": ["src/common/*"]
     }
   },
   "include": ["src"],

@@ -39,7 +39,7 @@ if (!app.requestSingleInstanceLock()) {
 let win: BrowserWindow | null = null;
 
 app.whenReady().then(async () => {
-  createWindow(app);
+  // createWindow(app);
 
   server = await createServer();
 

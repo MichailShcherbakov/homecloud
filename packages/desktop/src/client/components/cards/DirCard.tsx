@@ -1,17 +1,14 @@
 import { Stack, Typography } from "@mui/material";
 import React from "react";
 import { makeStyles } from "tss-react/mui";
-import { ReactComponent as FolderIcon } from "@client/assets/folder.svg";
+import { ReactComponent as DirIcon } from "@client/assets/folder.svg";
 
-export interface FolderCardProps {
+export interface DirCardProps {
   name: string;
   uploadedTime: string;
 }
 
-export const FolderCard: React.FC<FolderCardProps> = ({
-  name,
-  uploadedTime,
-}) => {
+export const DirCard: React.FC<DirCardProps> = ({ name, uploadedTime }) => {
   const { classes } = useStyle();
   return (
     <Stack
@@ -22,8 +19,8 @@ export const FolderCard: React.FC<FolderCardProps> = ({
       spacing={1}
       className={classes.root}
     >
-      <FolderIcon className={classes.icon} />
-      <Stack direction="column" alignItems="center">
+      <DirIcon className={classes.icon} />
+      <Stack direction="column" alignItems="center" width="100%">
         <Typography className={classes.title}>{name}</Typography>
         <Typography className={classes.subtitle}>{uploadedTime}</Typography>
       </Stack>
@@ -53,10 +50,18 @@ const useStyle = makeStyles()({
     color: "#0d2862",
     fontWeight: 700,
     fontSize: 16,
+    width: "100%",
+    textOverflow: "ellipsis",
+    overflow: "hidden",
+    whiteSpace: "nowrap",
   },
   subtitle: {
     color: "#8693b1",
     fontWeight: 400,
     fontSize: 13,
+    width: "100%",
+    textOverflow: "ellipsis",
+    overflow: "hidden",
+    whiteSpace: "nowrap",
   },
 });

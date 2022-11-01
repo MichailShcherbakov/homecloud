@@ -1,16 +1,20 @@
 import React from "react";
-import { Grid, Stack, Typography } from "@mui/material";
+import { Grid, Stack } from "@mui/material";
 import { AppBar } from "@client/components/AppBar";
-import { FolderCard } from "@client/components/cards";
+import { DirCard, FileCard } from "@client/components/cards";
 import { makeStyles } from "tss-react/mui";
 import { InfoBar } from "@client/components/InfoBar";
 import { SearchBar } from "@client/components/SearchBar";
-import { HostCard } from "@client//components/cards/HostCard";
+import { HostCard } from "@client/components/cards/HostCard";
+import { useGetRootEntities } from "@client/hooks/useGetRootEntities";
 
 export interface HomePageProps {}
 
 export const HomePage: React.FC<HomePageProps> = () => {
   const { classes } = useStyle();
+
+  const { entities } = useGetRootEntities();
+
   return (
     <Stack direction="column" className={classes.root}>
       <AppBar className={classes.appBar}>
@@ -29,15 +33,21 @@ export const HomePage: React.FC<HomePageProps> = () => {
       <Stack direction="row" className={classes.container}>
         <Stack className={classes.content}>
           <Grid container spacing={2}>
-            <Grid item>
-              <FolderCard name="Folder #1" uploadedTime="10/30/2022, 12:08" />
-            </Grid>
-            <Grid item>
-              <FolderCard name="Folder #2" uploadedTime="10/30/2022, 12:08" />
-            </Grid>
-            <Grid item>
-              <FolderCard name="Folder #3" uploadedTime="10/30/2022, 12:08" />
-            </Grid>
+            {entities.map(entity => (
+              <Grid item key={entity.uuid}>
+                {entity.isDirectory ? (
+                  <DirCard
+                    name={entity.name}
+                    uploadedTime="10/30/2022, 12:08"
+                  />
+                ) : (
+                  <FileCard
+                    name={entity.name}
+                    uploadedTime="10/30/2022, 12:08"
+                  />
+                )}
+              </Grid>
+            ))}
           </Grid>
         </Stack>
         <Stack direction="column" className={classes.infoBar}>

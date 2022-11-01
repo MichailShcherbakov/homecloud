@@ -1,54 +1,66 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { resolve } from "path";
-import { join } from "path";
-import { writeFile } from "fs/promises";
-import { readOrCreateFileSync } from "@server/utils/readOrCreateFile";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ConfigEntity } from "@/server/db/entities/config.entity";
+import { IsNull, Not, Repository } from "typeorm";
 
-const CONFIG_FILE_NAME = "homecloud.config.json";
 const DEFAULT_CONFIG_DIR_NAME = "storage";
 
-export interface Config {
-  path: {
-    root: string;
-  };
-}
+@Injectable()
+export class ConfigService implements OnModuleInit {
+  private config: ConfigEntity;
 
-@Injectable({})
-export class ConfigService {
-  private path: string = resolve(process.cwd(), CONFIG_FILE_NAME);
-  private config: Config;
+  constructor(
+    @InjectRepository(ConfigEntity)
+    private readonly configRepository: Repository<ConfigEntity>,
+    private readonly logger: Logger
+  ) {}
 
-  constructor(private readonly logger: Logger) {
-    const initialConfig = JSON.stringify({
-      path: { root: join(process.cwd(), DEFAULT_CONFIG_DIR_NAME) },
+  async onModuleInit() {
+    /*  return first config */
+    let config = await this.configRepository.findOne({
+      where: {
+        uuid: Not(IsNull()),
+      },
     });
 
-    this.config = JSON.parse(
-      readOrCreateFileSync(this.path, initialConfig)
-    ) as Config;
+    if (!config) {
+      this.logger.log(`Creating initial configuration...`, ConfigService.name);
+
+      const initialConfig = new ConfigEntity();
+      initialConfig.rootPath = resolve(process.cwd(), DEFAULT_CONFIG_DIR_NAME);
+
+      config = await this.configRepository.save(initialConfig);
+
+      this.logger.log(
+        `The initial configuration was created.`,
+        ConfigService.name
+      );
+    }
+
+    this.config = config;
 
     this.logger.log(
-      `Found config file: ${CONFIG_FILE_NAME}`,
+      `Loaded the configuration:\n${JSON.stringify(this.config, null, 4)}`,
       ConfigService.name
     );
-    this.logger.log(JSON.stringify(this.config, "", 4), ConfigService.name);
   }
 
-  getRootPath(): string {
-    return this.config.path.root;
+  async getRootPath(): Promise<string> {
+    return this.config.rootPath;
   }
 
-  async setRootPath(val: string): Promise<void> {
-    this.config.path.root = val;
+  async setRootPath(path: string): Promise<void> {
+    this.config.rootPath = path;
 
     await this.sync();
   }
 
   private async sync(): Promise<void> {
-    writeFile(this.path, JSON.stringify(this.config));
+    await this.configRepository.save(this.config);
 
     this.logger.log(
-      `Sync config file: ${CONFIG_FILE_NAME}`,
+      `Sync configuration:\n${JSON.stringify(this.config, null, 4)}`,
       ConfigService.name
     );
   }
