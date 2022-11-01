@@ -1,11 +1,10 @@
 export type EventHandler<T = any> = (...args: T[]) => void;
 
 export class EventListener<T = any> {
-  private readonly events: Map<string, EventHandler<T>[]>;
-
-  constructor() {
-    this.events = new Map<string, EventHandler<T>[]>();
-  }
+  private readonly events: Map<string, EventHandler<T>[]> = new Map<
+    string,
+    EventHandler<T>[]
+  >();
 
   public on(type: string, cb: EventHandler<T>) {
     const handlers = this.events.get(type);

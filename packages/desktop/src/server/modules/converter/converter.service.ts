@@ -1,14 +1,17 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { EventListener } from "@server/utils/event-listener";
 import { join } from "path";
 import hidefile from "hidefile";
 import { mkdir, rm } from "fs/promises";
 import { ConfigService } from "../config/config.service";
 import { QueueManager } from "../queue/queue.manager";
-import chokidar from "chokidar";
 import { access } from "@server/utils/access";
 import { ConverterWorker, ConverterWorkerContext } from "./converter.worker";
 import { getInfoFromPath } from "@/server/utils/getInfoFromPath";
+import { OnEvent } from "@nestjs/event-emitter";
+import { FileEntity } from "@/server/db/entities/file.entity";
+import { StorageManager } from "../storage/storage.manager";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { JobEntity } from "@/server/db/entities/job.entity";
 
 const CONVERTER_WORKER_TYPE = "CONVERTER_WORKER_TYPE";
 
@@ -18,39 +21,37 @@ export interface ConverterFile {
 }
 
 @Injectable()
-export class Converter extends EventListener implements OnModuleInit {
-  private watcher: chokidar.FSWatcher;
-
+export class Converter implements OnModuleInit {
   constructor(
     private readonly config: ConfigService,
     private readonly queue: QueueManager,
-    private readonly logger: Logger
+    private readonly logger: Logger,
+    private readonly storageManager: StorageManager,
+    private readonly emitter: EventEmitter2
   ) {
-    super();
-
     this.queue.addWorker(CONVERTER_WORKER_TYPE, () => new ConverterWorker());
 
-    this.queue.on("start", () => {
+    this.queue.on("start", (job: JobEntity) => {
       this.logger.log("Start of conversion...", Converter.name);
 
-      this.emit("start", { shouldToBeConvertedAmount: this.queue.getCount() });
+      this.emitter.emit("converter.start", job);
     });
 
-    this.queue.on("done", file => {
+    this.queue.on("done", (result, job: JobEntity) => {
       this.logger.log("The conversion is done.", Converter.name);
 
-      this.emit("done", file);
+      this.emitter.emit("converter.done", job);
     });
 
-    this.queue.on("failed", () => {
+    this.queue.on("failed", (err, job) => {
       this.logger.error("The conversion is failed.", Converter.name);
 
-      this.emit("failed");
+      this.emitter.emit("converter.failed", job);
     });
   }
 
   async onModuleInit() {
-    /* const absoluteRootPath = await this.config.getRootPath();
+    const absoluteRootPath = await this.config.getRootPath();
     const mediaDirPath = `${absoluteRootPath}/.media`;
     const isMediaDirExists = await access(mediaDirPath);
 
@@ -60,88 +61,11 @@ export class Converter extends EventListener implements OnModuleInit {
       hidefile.hideSync(mediaDirPath);
     }
 
-    this.watcher = chokidar.watch(absoluteRootPath, {
-      ignored: /(.+)\.media\/(.+)/,
-    });
+    const files = await this.storageManager.findFiles();
 
-    this.watcher.on("add", async absolutePath => {
-      this.logger.log(
-        `The entity was detected: ${absolutePath}`,
-        Converter.name
-      );
-
-      const { filename, relativeDirPath } = getInfoFromPath(
-        absoluteRootPath,
-        absolutePath
-      );
-
-      const inputFilePath = absolutePath;
-      const outputDir = join(
-        absoluteRootPath,
-        `.media${relativeDirPath}/${filename}`
-      );
-      const outputFilePath = join(outputDir, `${filename}.m3u8`);
-
-      const isJobFinished = await this.queue.isJobFinished(
-        CONVERTER_WORKER_TYPE,
-        {
-          inputFilePath,
-          outputFilePath,
-        }
-      );
-
-      const isFileExists = await access(
-        join(
-          absoluteRootPath,
-          ".media",
-          relativeDirPath,
-          filename,
-          `${filename}.m3u8`
-        )
-      );
-
-      if (isFileExists && isJobFinished) return;
-
-      await mkdir(outputDir, { recursive: true });
-
-      this.addFile({
-        inputFilePath,
-        outputFilePath,
-      });
-
-      this.logger.log(
-        `The entity was added to queue:\n - from: ${inputFilePath}\n - to: ${outputFilePath}`,
-        Converter.name
-      );
-    });
-
-    this.watcher.on("unlink", async absolutePath => {
-      this.logger.log(`Deleting the entity was detected`, Converter.name);
-
-      const { filename, relativeDirPath } = getInfoFromPath(
-        absoluteRootPath,
-        absolutePath
-      );
-
-      const isFileExists = await access(
-        join(
-          absoluteRootPath,
-          ".media",
-          relativeDirPath,
-          filename,
-          `${filename}.m3u8`
-        )
-      );
-
-      if (!isFileExists) return;
-
-      await rm(join(absoluteRootPath, ".media", relativeDirPath, filename), {
-        recursive: true,
-        force: true,
-      });
-
-      this.logger.log(`The entity was deleted`, Converter.name);
-    }); */
+    for (const file of files) {
+      this.onAddFile(file);
+    }
   }
 
   public addFile(file: ConverterFile) {
@@ -151,70 +75,94 @@ export class Converter extends EventListener implements OnModuleInit {
     });
   }
 
-  /* public async run() {
-    this.queue.setAutostart(false);
+  @OnEvent("storage.add_file")
+  private async onAddFile(file: FileEntity) {
+    const absoluteRootPath = await this.config.getRootPath();
 
-    const globalRootPath = this.config.getRootPath();
-
-    const entities = await readDir(globalRootPath, {
-      includeExts: [".mp4", ".mkv", ".webm", ".avi"],
-      excludeDirPaths: ["/.media/"],
-      onlyFiles: true,
-    });
-
-    const converted = await readDir(globalRootPath, {
-      includeExts: [".m3u8"],
-      includeDirPaths: ["/.media/"],
-      onlyFiles: true,
-    });
-
-    const shouldToBeRemoved = converted.filter(
-      c =>
-        !entities.find(e => `${c.parentDirPath}${e.ext}` === `/.media${e.path}`)
+    const { filename, relativeDirPath } = getInfoFromPath(
+      absoluteRootPath,
+      file.absolutePath
     );
 
-    await Promise.all(
-      shouldToBeRemoved.map(e =>
-        rm(join(globalRootPath, e.parentDirPath), {
-          recursive: true,
-          force: true,
-        })
+    const inputFilePath = file.absolutePath;
+    const outputDir = join(
+      absoluteRootPath,
+      `.media${relativeDirPath}/${filename}`
+    );
+    const outputFilePath = join(outputDir, `${filename}.m3u8`);
+
+    const isJobFinished = await this.queue.isJobFinished(
+      CONVERTER_WORKER_TYPE,
+      {
+        inputFilePath,
+        outputFilePath,
+      }
+    );
+
+    const isFileExists = await access(
+      join(
+        absoluteRootPath,
+        ".media",
+        relativeDirPath,
+        filename,
+        `${filename}.m3u8`
       )
     );
 
-    const shouldToBeConverted = entities.filter(
-      e =>
-        !converted.find(
-          c => `${c.parentDirPath}${e.ext}` === `/.media${e.path}`
-        )
+    if (isFileExists && isJobFinished) return;
+
+    this.logger.log(
+      `Preparing to convert the file...: ${file.absolutePath}`,
+      Converter.name
     );
 
-    await mkdir(`${globalRootPath}/.media`, { recursive: true });
+    await mkdir(outputDir, { recursive: true });
 
-    hidefile.hideSync(`${globalRootPath}/.media`);
-
-    for (let i = 0; i < shouldToBeConverted.length; ++i) {
-      const e = shouldToBeConverted[i];
-
-      const inputFilePath = join(globalRootPath, e.path);
-      const outputDir = join(
-        globalRootPath,
-        `.media${e.path.replace(/\.[^/.]+$/, "")}`
-      );
-      const outputFilePath = join(outputDir, `${e.name}.m3u8`);
-
-      await mkdir(outputDir, { recursive: true });
-
-      this.addFile({
-        inputFilePath,
-        outputFilePath,
-      });
-    }
-
-    this.queue.run(() => {
-      this.emit("end");
-
-      this.queue.setAutostart(true);
+    this.addFile({
+      inputFilePath,
+      outputFilePath,
     });
-  } */
+
+    this.logger.log(
+      `The converting job was added to the queue:\n - from: ${inputFilePath}\n - to: ${outputFilePath}`,
+      Converter.name
+    );
+  }
+
+  @OnEvent("storage.remove_file")
+  private async onRemoveFile(file: FileEntity) {
+    const absoluteRootPath = await this.config.getRootPath();
+
+    const { filename, relativeDirPath } = getInfoFromPath(
+      absoluteRootPath,
+      file.absolutePath
+    );
+
+    const isFileExists = await access(
+      join(
+        absoluteRootPath,
+        ".media",
+        relativeDirPath,
+        filename,
+        `${filename}.m3u8`
+      )
+    );
+
+    if (!isFileExists) return;
+
+    this.logger.log(
+      `Preparing to delete the media file...: ${file.absolutePath}`,
+      Converter.name
+    );
+
+    await rm(join(absoluteRootPath, ".media", relativeDirPath, filename), {
+      recursive: true,
+      force: true,
+    });
+
+    this.logger.log(
+      `The media file was deleted: ${file.absolutePath}`,
+      Converter.name
+    );
+  }
 }

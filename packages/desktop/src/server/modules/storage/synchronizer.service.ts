@@ -7,8 +7,6 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import { ConfigService } from "../config/config.service";
 import { createWorker, QueueManager } from "../queue/queue.manager";
 import {
@@ -19,6 +17,7 @@ import {
 import { WatcherService } from "./watcher.service";
 import { basename, dirname } from "path";
 import { access } from "@/server/utils/access";
+import { StorageManager } from "./storage.manager";
 
 @Injectable()
 export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
@@ -27,10 +26,7 @@ export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
     private readonly logger: Logger,
     private readonly watcherService: WatcherService,
     private readonly queueManager: QueueManager,
-    @InjectRepository(DirectoryEntity)
-    private readonly directoriesRepository: Repository<DirectoryEntity>,
-    @InjectRepository(FileEntity)
-    private readonly filesRepository: Repository<FileEntity>
+    private readonly storageManager: StorageManager
   ) {}
 
   async onModuleInit() {
@@ -70,9 +66,7 @@ export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
     );
 
     const isFileExists = Boolean(
-      await this.filesRepository.findOneBy({
-        absolutePath,
-      })
+      await this.storageManager.findOneFileByAbsolutePath(absolutePath)
     );
 
     if (isFileExists) return;
@@ -109,7 +103,7 @@ export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
     file.relativePath = file.absolutePath.replace(absoluteRootPath, "");
 
     if (fileInfo.absoluteDirPath === absoluteRootPath) {
-      await this.filesRepository.save(file);
+      await this.storageManager.saveFile(file);
       return;
     }
 
@@ -118,21 +112,19 @@ export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
     file.directory = parentDirectory;
     file.directoryUUID = parentDirectory.uuid;
 
-    await this.filesRepository.save(file);
+    await this.storageManager.saveFile(file);
 
     let currentDirectoryUUID: string | undefined = file.directoryUUID;
 
     while (currentDirectoryUUID) {
       const directory: DirectoryEntity | null =
-        await this.directoriesRepository.findOneBy({
-          uuid: currentDirectoryUUID,
-        });
+        await this.storageManager.findOneDirectoryByUuid(currentDirectoryUUID);
 
       if (!directory) return;
 
       directory.size += file.size;
 
-      await this.directoriesRepository.save(directory);
+      await this.storageManager.saveDirectory(directory);
 
       currentDirectoryUUID = directory.parentDirectoryUUID;
     }
@@ -141,41 +133,37 @@ export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
   private async removeFile(ctx: SynchronizerWorkerContext) {
     const { absolutePath } = ctx;
 
-    const file = await this.filesRepository.findOneBy({
-      absolutePath,
-    });
+    const file = await this.storageManager.findOneFileByAbsolutePath(
+      absolutePath
+    );
 
     if (!file) return;
 
-    await this.filesRepository.delete({
-      uuid: file.uuid,
-    });
+    await this.storageManager.deleteFileByUuid(file.uuid);
 
     let currentDirectoryUUID = file.directoryUUID;
 
     while (currentDirectoryUUID) {
-      const directory = await this.directoriesRepository.findOneBy({
-        uuid: currentDirectoryUUID,
-      });
+      const directory = await this.storageManager.findOneDirectoryByUuid(
+        currentDirectoryUUID
+      );
 
       if (!directory) return;
 
       directory.size -= file.size;
 
       if (directory.size === 0)
-        await this.directoriesRepository.delete({
-          uuid: directory.uuid,
-        });
-      else await this.directoriesRepository.save(directory);
+        await this.storageManager.deleteDirectoryByUuid(directory.uuid);
+      else await this.storageManager.saveDirectory(directory);
 
       currentDirectoryUUID = directory.parentDirectoryUUID;
     }
   }
 
   private async getDirectory(absoluteDirPath: string) {
-    const directory = await this.directoriesRepository.findOneBy({
-      absolutePath: absoluteDirPath,
-    });
+    const directory = await this.storageManager.findOneDirectoryByAbsolutePath(
+      absoluteDirPath
+    );
 
     if (directory) return directory;
 
@@ -189,25 +177,26 @@ export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
     dir.relativePath = dir.absolutePath.replace(absoluteRootPath, "");
 
     const parentDirectoryPath = dirname(dir.absolutePath);
-    const parentDirectory = await this.directoriesRepository.findOneBy({
-      absolutePath: parentDirectoryPath,
-    });
+    const parentDirectory =
+      await this.storageManager.findOneDirectoryByAbsolutePath(
+        parentDirectoryPath
+      );
 
     if (parentDirectory) {
       dir.parentDirectoryUUID = parentDirectory.uuid;
 
-      await this.directoriesRepository.save(parentDirectory);
+      await this.storageManager.saveDirectory(parentDirectory);
     } else if (parentDirectoryPath !== absoluteRootPath) {
       const parentDirectory = await this.getDirectory(parentDirectoryPath);
 
       dir.parentDirectoryUUID = parentDirectory.uuid;
     }
 
-    return this.directoriesRepository.save(dir);
+    return this.storageManager.saveDirectory(dir);
   }
 
   private async deleteUnreachedFiles() {
-    const files = await this.filesRepository.find();
+    const files = await this.storageManager.findFiles();
 
     const filesWithDeleteFlag = await Promise.all(
       files.map(async f => ({

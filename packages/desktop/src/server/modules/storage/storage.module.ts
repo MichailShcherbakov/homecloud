@@ -3,9 +3,9 @@ import { FileEntity } from "@/server/db/entities/file.entity";
 import { Logger, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule } from "../config/config.module";
-import { FileSystemModule } from "../file-system/file-system.module";
 import { QueueModule } from "../queue";
 import { StorageController } from "./storage.controller";
+import { StorageManager } from "./storage.manager";
 import { StorageService } from "./storage.service";
 import { SynchronizerService } from "./synchronizer.service";
 import { WatcherService } from "./watcher.service";
@@ -17,7 +17,18 @@ import { WatcherService } from "./watcher.service";
     QueueModule,
   ],
   controllers: [StorageController],
-  providers: [Logger, StorageService, SynchronizerService, WatcherService],
-  exports: [StorageService],
+  providers: [
+    Logger,
+    StorageService,
+    SynchronizerService,
+    StorageManager,
+    WatcherService,
+  ],
+  exports: [
+    StorageService,
+    SynchronizerService,
+    StorageManager,
+    WatcherService,
+  ],
 })
 export class StorageModule {}

@@ -1,25 +1,16 @@
+import { dirname, parse } from "path";
+
 export function getInfoFromPath(
   absoluteRootPath: string,
   absolutePath: string
 ) {
-  const relativePath = absolutePath
-    .replaceAll("\\", "/")
-    .replace(absoluteRootPath, "");
+  const relativePath = absolutePath.replace(absoluteRootPath, "");
 
-  const rawRelativePath = relativePath.split("/");
-
-  const filename = rawRelativePath[rawRelativePath.length - 1].replace(
-    /\.[^/.]+$/,
-    ""
-  );
-
-  rawRelativePath.pop();
-
-  const relativeDirPath = rawRelativePath.join("/");
+  const { name } = parse(absolutePath);
 
   return {
-    filename,
+    filename: name,
     relativePath,
-    relativeDirPath,
+    relativeDirPath: dirname(relativePath),
   };
 }

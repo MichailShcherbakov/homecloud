@@ -1,5 +1,5 @@
 import Queue from "queue";
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit, Scope } from "@nestjs/common";
 import { EventListener } from "@server/utils/event-listener";
 import { Not, Repository } from "typeorm";
 import { JobEntity, JobStatusEnum } from "@/server/db/entities/job.entity";
@@ -28,11 +28,13 @@ export function createWorker<
 
 type WorkerInstance = () => any;
 
-@Injectable()
+@Injectable({
+  scope: Scope.TRANSIENT,
+})
 export class QueueManager extends EventListener implements OnModuleInit {
   private readonly queue: Queue;
   private readonly workers: Map<string, IWorker> = new Map<string, IWorker>();
-  private readonly workerInstances: Map<WorkerInstance, JobEntity> = new Map<
+  private readonly jobs: Map<WorkerInstance, JobEntity> = new Map<
     WorkerInstance,
     JobEntity
   >();
@@ -46,23 +48,19 @@ export class QueueManager extends EventListener implements OnModuleInit {
 
     this.queue = Queue({ results: [], autostart: true, concurrency: 1 });
 
-    this.queue.on("start", job => {
-      const workerInstance = this.workerInstances.get(job);
+    this.queue.on("start", workerInstance => {
+      const job = this.jobs.get(workerInstance) as JobEntity;
 
       this.logger.log(
-        `The Job Execution:\n - job: ${JSON.stringify(
-          workerInstance,
-          null,
-          4
-        )}`,
+        `The Job Execution:\n - job: ${toJSON(job)}`,
         QueueManager.name
       );
 
-      this.emit("start", workerInstance);
+      this.emit("start", job);
     });
 
     this.queue.on("success", async (result, workerInstance) => {
-      const job = this.workerInstances.get(workerInstance) as JobEntity;
+      const job = this.jobs.get(workerInstance) as JobEntity;
 
       this.logger.log(
         `The Job is done:\n - job: ${toJSON(job)}\n - result: ${toJSON(
@@ -71,35 +69,31 @@ export class QueueManager extends EventListener implements OnModuleInit {
         QueueManager.name
       );
 
-      this.workerInstances.delete(workerInstance);
+      this.jobs.delete(workerInstance);
 
       job.status = JobStatusEnum.FINISHED;
 
       await this.jobsRepository.save(job);
 
-      this.emit("done", result, workerInstance);
+      this.emit("done", result, job);
     });
 
     this.queue.on("error", async (err, workerInstance) => {
-      const job = this.workerInstances.get(workerInstance) as JobEntity;
+      const job = this.jobs.get(workerInstance) as JobEntity;
 
       this.logger.error(
         `The Job is failed:\n - job: ${toJSON(job)}\n - error: ${toJSON(err)}`,
         QueueManager.name
       );
 
-      this.workerInstances.delete(workerInstance);
+      this.jobs.delete(workerInstance);
 
       job.status = JobStatusEnum.ERROR;
 
       await this.jobsRepository.save(job);
 
-      this.emit("failed", err, workerInstance);
+      this.emit("failed", err, job);
     });
-
-    /* this.queue.on("end", (_, err) => {
-      this.emit("end", err);
-    }); */
   }
 
   async onModuleInit() {
@@ -110,7 +104,7 @@ export class QueueManager extends EventListener implements OnModuleInit {
     });
 
     for (const finishedJob of unfinishedJobs) {
-      this.addExistsJob(finishedJob);
+      this.addUnfinishedJob(finishedJob);
     }
   }
 
@@ -137,10 +131,7 @@ export class QueueManager extends EventListener implements OnModuleInit {
 
     const workerInstance = () => worker.run(ctx);
 
-    this.workerInstances.set(
-      workerInstance,
-      await this.jobsRepository.save(job)
-    );
+    this.jobs.set(workerInstance, await this.jobsRepository.save(job));
 
     this.queue.push(workerInstance);
   }
@@ -160,14 +151,14 @@ export class QueueManager extends EventListener implements OnModuleInit {
     return jobs.length !== 0;
   }
 
-  private async addExistsJob(job: JobEntity): Promise<void> {
+  private async addUnfinishedJob(job: JobEntity): Promise<void> {
     const worker = this.workers.get(job.type);
 
     if (!worker) return;
 
     const workerInstance = () => worker.run(fromJSON(job.ctx));
 
-    this.workerInstances.set(workerInstance, job);
+    this.jobs.set(workerInstance, job);
 
     this.queue.push(workerInstance);
   }
