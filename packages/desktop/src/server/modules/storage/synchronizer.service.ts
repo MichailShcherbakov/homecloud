@@ -11,13 +11,14 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { ConfigService } from "../config/config.service";
 import { createWorker, QueueManager } from "../queue/queue.manager";
-import { SynchronizerWorkerContext } from "./synchronizer.worker";
+import {
+  SynchronizerWorkerContext,
+  SYNCHRONIZER_CREATE_WORKER_TYPE,
+  SYNCHRONIZER_REMOVE_WORKER_TYPE,
+} from "./synchronizer.worker";
 import { WatcherService } from "./watcher.service";
 import { basename, dirname } from "path";
 import { access } from "@/server/utils/access";
-
-const SYNCHRONIZER_CREATE_WORKER_TYPE = "SYNCHRONIZER_CREATE_WORKER_TYPE";
-const SYNCHRONIZER_REMOVE_WORKER_TYPE = "SYNCHRONIZER_REMOVE_WORKER_TYPE";
 
 @Injectable()
 export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
@@ -42,7 +43,6 @@ export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
     );
 
     await this.deleteUnreachedFiles();
-    await this.deleteUnreachedDirectories();
 
     const absoluteRootPath = await this.config.getRootPath();
 
@@ -219,24 +219,5 @@ export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
     filesWithDeleteFlag
       .filter(f => f.isDeleted)
       .map(f => this.onFileDeleted(f.absolutePath));
-  }
-
-  private async deleteUnreachedDirectories() {
-    const directories = await this.directoriesRepository.find();
-
-    const directoriesWithDeleteFlag = await Promise.all(
-      directories.map(async d => ({
-        ...d,
-        isDeleted: !(await access(d.absolutePath)),
-      }))
-    );
-
-    const unreachedDirectoriesUUIDs = directoriesWithDeleteFlag
-      .filter(f => f.isDeleted)
-      .map(d => d.uuid);
-
-    await this.directoriesRepository.delete({
-      uuid: In(unreachedDirectoriesUUIDs),
-    });
   }
 }
