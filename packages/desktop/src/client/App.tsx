@@ -1,15 +1,15 @@
 import React from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { HashRouter, Route, Routes, useLocation } from "react-router-dom";
 import { HomePage } from "@client/pages";
 
 export interface AppProps {}
 
 export const App: React.FC<AppProps> = () => {
   return (
-    <BrowserRouter>
+    <HashRouter basename="/">
       <Routes>
         <Route path="/" element={<HomePage />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 };

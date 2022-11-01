@@ -3,13 +3,15 @@ import { join } from "path";
 
 export async function createWindow(app: Electron.App) {
   const url = process.env.VITE_DEV_SERVER_URL;
-  const indexHtml = join(process.env.DIST ?? "", "index.html");
+  const indexHtml = join(process.env.DIST, "index.html");
 
   const win = new BrowserWindow({
-    title: "Main window",
+    title: "HomeCloud",
     width: 1280,
     height: 720,
-    icon: join(process.env.PUBLIC ?? "", "favicon.svg"),
+    minWidth: 1280,
+    minHeight: 720,
+    icon: join(process.env.PUBLIC, "favicon.svg"),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -17,7 +19,9 @@ export async function createWindow(app: Electron.App) {
   });
 
   if (app.isPackaged) {
-    win.loadFile(indexHtml);
+    win.loadFile(indexHtml, {
+      hash: "/",
+    });
   } else {
     win.loadURL(url);
     win.webContents.openDevTools();

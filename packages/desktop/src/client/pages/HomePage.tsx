@@ -63,9 +63,9 @@ const useStyle = makeStyles()({
     flexGrow: 1,
   },
   appBar: {
-    borderBottom: "2px solid #eee",
+    borderBottom: "1px solid #d1d1d1",
   },
   infoBar: {
-    borderLeft: "1px solid #eee",
+    borderLeft: "1px solid #d1d1d1",
   },
 });

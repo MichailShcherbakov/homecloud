@@ -4,7 +4,6 @@
     "target": "ESNext",
     "useDefineForClassFields": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
-
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": false,
@@ -26,6 +25,6 @@
       "@server/*": ["src/server/*"]
     }
   },
-  "include": ["src", "electron"],
+  "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

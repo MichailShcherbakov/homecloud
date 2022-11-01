@@ -11,7 +11,7 @@ export const Logo: React.FC<LogoProps> = () => {
     <Stack
       direction="row"
       alignItems="center"
-      spacing={2}
+      spacing={1}
       className={classes.root}
     >
       <LogoIcon className={classes.icon} />
@@ -26,8 +26,8 @@ export const Logo: React.FC<LogoProps> = () => {
 const useStyle = makeStyles()({
   root: {},
   icon: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
   },
   iconTitle1: {
     color: "#0d2862",

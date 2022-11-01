@@ -34,7 +34,7 @@ const useStyle = makeStyles()({
     borderColor: "#c2c6cc",
     backgroundColor: "#fff",
     border: 0,
-    boxShadow: "none",
+    boxShadow: "0px 0px 14px 0px #ccc",
   },
   toolbar: {
     width: "100%",

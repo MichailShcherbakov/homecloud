@@ -1,80 +1,56 @@
 import { rmSync } from "fs";
-import path from "path";
+import { join } from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import svgr from "vite-plugin-svgr";
-import electron from "vite-electron-plugin";
-import { customStart, alias } from "vite-electron-plugin/plugin";
+import electron from "vite-plugin-electron";
 import renderer from "vite-plugin-electron-renderer";
-import pkg from "./package.json";
 import { VitePluginNode } from "vite-plugin-node";
 
-rmSync(path.join(__dirname, "dist-electron"), { recursive: true, force: true });
+rmSync(join(__dirname, "build"), { recursive: true, force: true });
 
-// https://vitejs.dev/config/
+const alias = {
+  "@": join(__dirname, "src"),
+  "@public": join(__dirname, "public"),
+  "@electron": join(__dirname, "electron"),
+  "@client": join(__dirname, "src/client"),
+  "@server": join(__dirname, "src/server"),
+};
+
 export default defineConfig({
+  root: join(__dirname, "src", "client"),
   resolve: {
-    alias: {
-      "@": path.join(__dirname, "src"),
-      "@public": path.join(__dirname, "public"),
-      "@electron": path.join(__dirname, "electron"),
-      "@client": path.join(__dirname, "src/client"),
-      "@server": path.join(__dirname, "src/server"),
-    },
+    alias,
+  },
+  build: {
+    outDir: join(__dirname, "build", "renderer"),
+    emptyOutDir: true,
   },
   plugins: [
     svgr(),
     react(),
     electron({
-      include: ["electron", "preload", "src/server"],
-      transformOptions: {
-        sourcemap: !!process.env.VSCODE_DEBUG,
+      entry: "electron/main/index.ts",
+      vite: {
+        build: {
+          outDir: "build/main",
+        },
+        plugins: [
+          ...VitePluginNode({
+            adapter: "nest",
+            appPath: "electron/main/index.ts",
+            exportName: "viteNodeApp",
+            tsCompiler: "swc",
+          }),
+        ],
+        resolve: {
+          alias,
+        },
       },
-      // // Will start Electron via VSCode Debug
-      // plugins: process.env.VSCODE_DEBUG
-      //   ? [
-      //       customStart(
-      //         debounce(() =>
-      //           console.log(
-      //             /* For `.vscode/.debug.script.mjs` */ "[startup] Electron App"
-      //           )
-      //         )
-      //       ),
-      //     ]
-      //   : undefined,
-      plugins: [
-        alias([
-          { find: "@", replacement: path.join(__dirname, "src") },
-          { find: "@server", replacement: path.join(__dirname, "src/server") },
-          { find: "@client", replacement: path.join(__dirname, "src/client") },
-          { find: "@public", replacement: path.join(__dirname, "src/public") },
-          {
-            find: "@electron",
-            replacement: path.join(__dirname, "src/electron"),
-          },
-        ]),
-      ],
     }),
     renderer({
       nodeIntegration: true,
     }),
   ],
-  server: process.env.VSCODE_DEBUG
-    ? (() => {
-        const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL);
-        return {
-          host: url.hostname,
-          port: +url.port,
-        };
-      })()
-    : undefined,
   clearScreen: false,
 });
-
-function debounce<Fn extends (...args: any[]) => void>(fn: Fn, delay = 299) {
-  let t: NodeJS.Timeout;
-  return ((...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), delay);
-  }) as Fn;
-}

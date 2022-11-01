@@ -1,4 +1,4 @@
-import { AppModule } from "./AppModule";
+import { AppModule } from "./modules/app.module";
 import { createApp, IApplication } from "./utils/createApp";
 
 export interface IServer extends IApplication {}
