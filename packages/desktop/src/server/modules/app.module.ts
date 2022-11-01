@@ -15,7 +15,7 @@ import { ConfigModule } from "./config";
     }),
     ConfigModule,
     ConverterModule,
-    // StorageModule,
+    StorageModule,
   ],
   providers: [Logger],
   controllers: [AppContoller],

@@ -7,7 +7,7 @@ export enum JobStatusEnum {
   ERROR = "ERROR",
 }
 
-@Entity()
+@Entity("jobs")
 export class JobEntity {
   @PrimaryGeneratedColumn("uuid")
   uuid: string;

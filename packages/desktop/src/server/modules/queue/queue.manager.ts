@@ -17,6 +17,15 @@ export interface IWorker<
   run(ctx: TContext): Promise<TResult>;
 }
 
+export function createWorker<
+  TContext extends IWorkerContext = object,
+  TResult extends IWorkerResult = void
+>(handler: (ctx: TContext) => Promise<TResult>): IWorker<TContext, TResult> {
+  return {
+    run: handler,
+  };
+}
+
 type WorkerInstance = () => any;
 
 @Injectable()
@@ -35,7 +44,7 @@ export class QueueManager extends EventListener implements OnModuleInit {
   ) {
     super();
 
-    this.queue = Queue({ results: [], autostart: true, concurrency: 5 });
+    this.queue = Queue({ results: [], autostart: true, concurrency: 1 });
 
     this.queue.on("start", job => {
       const workerInstance = this.workerInstances.get(job);
@@ -144,11 +153,11 @@ export class QueueManager extends EventListener implements OnModuleInit {
       where: {
         ctx: JSON.stringify(ctx),
         type,
-        status: JobStatusEnum.PROCESSING,
+        status: JobStatusEnum.FINISHED,
       },
     });
 
-    return jobs.length === 0;
+    return jobs.length !== 0;
   }
 
   private async addExistsJob(job: JobEntity): Promise<void> {

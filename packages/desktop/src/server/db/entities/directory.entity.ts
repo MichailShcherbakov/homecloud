@@ -14,6 +14,15 @@ export class DirectoryEntity {
   @Column()
   name: string;
 
+  @Column()
+  size: number;
+
+  @Column({ unique: true })
+  absolutePath: string;
+
+  @Column({ unique: true })
+  relativePath: string;
+
   @Column({ type: "uuid", name: "parent_directory_uuid", nullable: true })
   public parentDirectoryUUID?: string;
 

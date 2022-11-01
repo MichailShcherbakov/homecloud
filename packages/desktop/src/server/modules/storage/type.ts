@@ -1,5 +1,13 @@
 export interface Statistics {
-  total_file_count: number;
-  total_dirs_count: number;
-  total_space_size: number;
+  directories: {
+    count: number;
+    size: number;
+  };
+  files: {
+    count: number;
+    size: number;
+  };
+  storage: {
+    size: number;
+  };
 }

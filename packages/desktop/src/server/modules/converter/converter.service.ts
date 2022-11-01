@@ -1,7 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { toHLS } from "@server/utils/to-hls";
 import { EventListener } from "@server/utils/event-listener";
-import { readDir } from "@server/utils/read-dir";
 import { join } from "path";
 import hidefile from "hidefile";
 import { mkdir, rm } from "fs/promises";
@@ -52,7 +50,7 @@ export class Converter extends EventListener implements OnModuleInit {
   }
 
   async onModuleInit() {
-    const absoluteRootPath = await this.config.getRootPath();
+    /* const absoluteRootPath = await this.config.getRootPath();
     const mediaDirPath = `${absoluteRootPath}/.media`;
     const isMediaDirExists = await access(mediaDirPath);
 
@@ -143,7 +141,7 @@ export class Converter extends EventListener implements OnModuleInit {
       });
 
       this.logger.log(`The entity was deleted`, Converter.name);
-    });
+    }); */
   }
 
   public addFile(file: ConverterFile) {
