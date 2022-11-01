@@ -28,7 +28,8 @@ export class ConfigService implements OnModuleInit {
       this.logger.log(`Creating initial configuration...`, ConfigService.name);
 
       const initialConfig = new ConfigEntity();
-      initialConfig.rootPath = resolve(process.cwd(), DEFAULT_CONFIG_DIR_NAME);
+      // initialConfig.rootPath = resolve(process.cwd(), DEFAULT_CONFIG_DIR_NAME);
+      initialConfig.rootPath = "C:/Users/Michail/Downloads/homecloud";
 
       config = await this.configRepository.save(initialConfig);
 
@@ -41,7 +42,7 @@ export class ConfigService implements OnModuleInit {
     this.config = config;
 
     this.logger.log(
-      `Loaded the configuration:\n${JSON.stringify(this.config, null, 4)}`,
+      `Loaded the configuration:/n${JSON.stringify(this.config, null, 4)}`,
       ConfigService.name
     );
   }
@@ -60,7 +61,7 @@ export class ConfigService implements OnModuleInit {
     await this.configRepository.save(this.config);
 
     this.logger.log(
-      `Sync configuration:\n${JSON.stringify(this.config, null, 4)}`,
+      `Sync configuration:/n${JSON.stringify(this.config, null, 4)}`,
       ConfigService.name
     );
   }

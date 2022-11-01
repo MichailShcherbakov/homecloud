@@ -1,8 +1,11 @@
-import { Module } from "@nestjs/common";
+import { JobEntity } from "@/server/db/entities/job.entity";
+import { Logger, Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
 import { QueueManager } from "./queue.manager";
 
 @Module({
-  providers: [QueueManager],
+  imports: [TypeOrmModule.forFeature([JobEntity])],
+  providers: [QueueManager, Logger],
   exports: [QueueManager],
 })
 export class QueueModule {}

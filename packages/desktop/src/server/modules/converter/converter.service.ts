@@ -9,6 +9,10 @@ import { ConfigService } from "../config/config.service";
 import { QueueManager } from "../queue/queue.manager";
 import chokidar from "chokidar";
 import { access } from "@server/utils/access";
+import { ConverterWorker, ConverterWorkerContext } from "./comverter.worker";
+import { getInfoFromPath } from "@/server/utils/getInfoFromPath";
+
+const CONVERTER_WORKER_TYPE = "CONVERTER_WORKER_TYPE";
 
 export interface ConverterFile {
   inputFilePath: string;
@@ -17,7 +21,7 @@ export interface ConverterFile {
 
 @Injectable()
 export class Converter extends EventListener implements OnModuleInit {
-  private readonly watcher: chokidar.FSWatcher;
+  private watcher: chokidar.FSWatcher;
 
   constructor(
     private readonly config: ConfigService,
@@ -26,49 +30,58 @@ export class Converter extends EventListener implements OnModuleInit {
   ) {
     super();
 
+    this.queue.addWorker(CONVERTER_WORKER_TYPE, () => new ConverterWorker());
+
     this.queue.on("start", () => {
       this.logger.log("Start of conversion...", Converter.name);
 
       this.emit("start", { shouldToBeConvertedAmount: this.queue.getCount() });
     });
+
     this.queue.on("done", file => {
       this.logger.log("The conversion is done.", Converter.name);
 
       this.emit("done", file);
     });
+
     this.queue.on("failed", () => {
       this.logger.error("The conversion is failed.", Converter.name);
 
       this.emit("failed");
     });
-
-    this.watcher = chokidar.watch(this.config.getRootPath(), {
-      ignored: /(.+)\.media\/(.+)/,
-    });
   }
 
-  onModuleInit() {
-    this.watcher.on("add", async globalPath => {
-      this.logger.log(`The entity was detected: ${globalPath}`, Converter.name);
+  async onModuleInit() {
+    const absoluteRootPath = await this.config.getRootPath();
+    const mediaDirPath = `${absoluteRootPath}/.media`;
+    const isMediaDirExists = await access(mediaDirPath);
 
-      const globalRootPath = this.config.getRootPath();
-      const localPath = globalPath
-        .replaceAll("\\", "/")
-        .replace(globalRootPath, "");
+    if (!isMediaDirExists) {
+      await mkdir(mediaDirPath, { recursive: true });
 
-      const rawPath = localPath.split("/");
+      hidefile.hideSync(mediaDirPath);
+    }
 
-      const filename = rawPath[rawPath.length - 1].replace(/\.[^/.]+$/, "");
+    this.watcher = chokidar.watch(absoluteRootPath, {
+      ignored: /(.+)\.media\/(.+)/,
+    });
 
-      rawPath.pop();
+    this.watcher.on("add", async absolutePath => {
+      this.logger.log(
+        `The entity was detected: ${absolutePath}`,
+        Converter.name
+      );
 
-      const localDirPath = rawPath.join("/");
+      const { filename, relativeDirPath } = getInfoFromPath(
+        absoluteRootPath,
+        absolutePath
+      );
 
       const isFileExists = await access(
         join(
-          globalRootPath,
+          absoluteRootPath,
           ".media",
-          localDirPath,
+          relativeDirPath,
           filename,
           `${filename}.m3u8`
         )
@@ -76,10 +89,10 @@ export class Converter extends EventListener implements OnModuleInit {
 
       if (isFileExists) return;
 
-      const inputFilePath = globalPath;
+      const inputFilePath = absolutePath;
       const outputDir = join(
-        globalRootPath,
-        `.media${localDirPath}/${filename}`
+        absoluteRootPath,
+        `.media${relativeDirPath}/${filename}`
       );
       const outputFilePath = join(outputDir, `${filename}.m3u8`);
 
@@ -96,27 +109,19 @@ export class Converter extends EventListener implements OnModuleInit {
       );
     });
 
-    this.watcher.on("unlink", async globalPath => {
+    this.watcher.on("unlink", async absolutePath => {
       this.logger.log(`Deleting the entity was detected`, Converter.name);
 
-      const globalRootPath = this.config.getRootPath();
-      const localPath = globalPath
-        .replaceAll("\\", "/")
-        .replace(globalRootPath, "");
-
-      const rawPath = localPath.split("/");
-
-      const filename = rawPath[rawPath.length - 1].replace(/\.[^/.]+$/, "");
-
-      rawPath.pop();
-
-      const localDirPath = rawPath.join("/");
+      const { filename, relativeDirPath } = getInfoFromPath(
+        absoluteRootPath,
+        absolutePath
+      );
 
       const isFileExists = await access(
         join(
-          globalRootPath,
+          absoluteRootPath,
           ".media",
-          localDirPath,
+          relativeDirPath,
           filename,
           `${filename}.m3u8`
         )
@@ -124,7 +129,7 @@ export class Converter extends EventListener implements OnModuleInit {
 
       if (!isFileExists) return;
 
-      await rm(join(globalRootPath, ".media", localDirPath, filename), {
+      await rm(join(absoluteRootPath, ".media", relativeDirPath, filename), {
         recursive: true,
         force: true,
       });
@@ -134,16 +139,13 @@ export class Converter extends EventListener implements OnModuleInit {
   }
 
   public addFile(file: ConverterFile) {
-    this.queue.add(async () => {
-      await toHLS(file.inputFilePath, file.outputFilePath);
-
-      this.logger.log(`Conversion completed successfully`, Converter.name);
-
-      return { file, shouldToBeConvertedAmount: this.queue.getCount() };
+    this.queue.addJob<ConverterWorkerContext>(CONVERTER_WORKER_TYPE, {
+      inputFilePath: file.inputFilePath,
+      outputFilePath: file.outputFilePath,
     });
   }
 
-  public async run() {
+  /* public async run() {
     this.queue.setAutostart(false);
 
     const globalRootPath = this.config.getRootPath();
@@ -208,5 +210,5 @@ export class Converter extends EventListener implements OnModuleInit {
 
       this.queue.setAutostart(true);
     });
-  }
+  } */
 }
