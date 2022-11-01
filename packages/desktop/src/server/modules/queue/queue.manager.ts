@@ -1,7 +1,7 @@
 import Queue from "queue";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { EventListener } from "@server/utils/event-listener";
-import { Repository } from "typeorm";
+import { Not, Repository } from "typeorm";
 import { JobEntity, JobStatusEnum } from "@/server/db/entities/job.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { fromJSON, toJSON } from "@/server/utils/json";
@@ -134,6 +134,21 @@ export class QueueManager extends EventListener implements OnModuleInit {
     );
 
     this.queue.push(workerInstance);
+  }
+
+  public async isJobFinished<TContext extends IWorkerContext>(
+    type: string,
+    ctx: TContext
+  ) {
+    const jobs = await this.jobsRepository.find({
+      where: {
+        ctx: JSON.stringify(ctx),
+        type,
+        status: JobStatusEnum.PROCESSING,
+      },
+    });
+
+    return jobs.length === 0;
   }
 
   private async addExistsJob(job: JobEntity): Promise<void> {

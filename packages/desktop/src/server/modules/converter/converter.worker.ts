@@ -14,12 +14,6 @@ export class ConverterWorker
   async run(ctx: ConverterWorkerContext) {
     const { inputFilePath, outputFilePath } = ctx;
 
-    // await toHLS(inputFilePath, outputFilePath);
-
-    return {
-      status: "ok",
-      inputFilePath,
-      outputFilePath,
-    };
+    await toHLS(inputFilePath, outputFilePath);
   }
 }

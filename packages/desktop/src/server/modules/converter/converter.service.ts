@@ -9,7 +9,7 @@ import { ConfigService } from "../config/config.service";
 import { QueueManager } from "../queue/queue.manager";
 import chokidar from "chokidar";
 import { access } from "@server/utils/access";
-import { ConverterWorker, ConverterWorkerContext } from "./comverter.worker";
+import { ConverterWorker, ConverterWorkerContext } from "./converter.worker";
 import { getInfoFromPath } from "@/server/utils/getInfoFromPath";
 
 const CONVERTER_WORKER_TYPE = "CONVERTER_WORKER_TYPE";
@@ -77,6 +77,21 @@ export class Converter extends EventListener implements OnModuleInit {
         absolutePath
       );
 
+      const inputFilePath = absolutePath;
+      const outputDir = join(
+        absoluteRootPath,
+        `.media${relativeDirPath}/${filename}`
+      );
+      const outputFilePath = join(outputDir, `${filename}.m3u8`);
+
+      const isJobFinished = await this.queue.isJobFinished(
+        CONVERTER_WORKER_TYPE,
+        {
+          inputFilePath,
+          outputFilePath,
+        }
+      );
+
       const isFileExists = await access(
         join(
           absoluteRootPath,
@@ -87,14 +102,7 @@ export class Converter extends EventListener implements OnModuleInit {
         )
       );
 
-      if (isFileExists) return;
-
-      const inputFilePath = absolutePath;
-      const outputDir = join(
-        absoluteRootPath,
-        `.media${relativeDirPath}/${filename}`
-      );
-      const outputFilePath = join(outputDir, `${filename}.m3u8`);
+      if (isFileExists && isJobFinished) return;
 
       await mkdir(outputDir, { recursive: true });
 
@@ -104,7 +112,7 @@ export class Converter extends EventListener implements OnModuleInit {
       });
 
       this.logger.log(
-        `The entity was added to queue: - from: \n${inputFilePath} - to: \n${outputFilePath}`,
+        `The entity was added to queue:\n - from: ${inputFilePath}\n - to: ${outputFilePath}`,
         Converter.name
       );
     });
