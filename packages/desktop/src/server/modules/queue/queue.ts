@@ -97,10 +97,14 @@ export class Queue extends EventListener {
   }
 
   async isCompletedJob(job: Partial<Job>) {
-    return !!(await this.storage.getLastJobBy({
+    return !!(await this.hasJob({
       ...job,
       status: JobStatusEnum.COMPLETED,
     }));
+  }
+
+  async hasJob(job: Partial<Job> & { status?: JobStatusEnum }) {
+    return !!(await this.storage.getLastJobBy(job));
   }
 
   private async process<TJobData extends Record<string, any>>(

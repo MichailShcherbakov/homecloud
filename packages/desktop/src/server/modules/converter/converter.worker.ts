@@ -24,7 +24,6 @@ export class ConverterWorker {
     const { inputFilePath, outputFilePath } = job.data;
 
     await toHLS(inputFilePath, outputFilePath, progress => {
-      console.log(progress);
       job.progress(progress.percent);
     });
   }

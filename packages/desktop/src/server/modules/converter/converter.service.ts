@@ -68,7 +68,7 @@ export class Converter implements OnModuleInit {
     );
     const outputFilePath = join(outputDir, `${filename}.m3u8`);
 
-    const isCompletedJob = await this.queue.isCompletedJob({
+    const existsJob = await this.queue.hasJob({
       data: {
         inputFilePath: inputFilePath,
         outputFilePath: outputFilePath,
@@ -86,7 +86,7 @@ export class Converter implements OnModuleInit {
       )
     );
 
-    if (isFileExists && isCompletedJob) return;
+    if (isFileExists && existsJob) return;
 
     this.logger.log(
       `Preparing to convert the file...: ${file.absolutePath}`,
