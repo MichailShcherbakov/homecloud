@@ -1,94 +1,35 @@
 import { DirectoryEntity } from "@/server/db/entities/directory.entity";
 import { FileEntity } from "@/server/db/entities/file.entity";
 import { getFileStat } from "@/server/utils/getFileStat";
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from "@nestjs/common";
 import { ConfigService } from "../config/config.service";
-import { createWorker, QueueManager } from "../queue/queue.manager";
 import {
-  SynchronizerWorkerContext,
-  SYNCHRONIZER_CREATE_WORKER_TYPE,
-  SYNCHRONIZER_REMOVE_WORKER_TYPE,
-} from "./synchronizer.worker";
-import { WatcherService } from "./watcher.service";
-import { basename, dirname } from "path";
-import { access } from "@/server/utils/access";
+  Job,
+  OnQueueActive,
+  OnQueueCompleted,
+  OnQueueFailed,
+  OnQueueProgress,
+  Process,
+  Processor,
+} from "../queue";
 import { StorageManager } from "./storage.manager";
+import { basename, dirname } from "path";
+import { Logger } from "@nestjs/common";
 
-@Injectable()
-export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
+export interface StorageSyncWorkerCtx {
+  absolutePath: string;
+}
+
+@Processor("sync")
+export class StorageSyncWorker {
   constructor(
-    private readonly config: ConfigService,
     private readonly logger: Logger,
-    private readonly watcherService: WatcherService,
-    private readonly queueManager: QueueManager,
+    private readonly config: ConfigService,
     private readonly storageManager: StorageManager
   ) {}
 
-  async onModuleInit() {
-    this.queueManager.addWorker(SYNCHRONIZER_CREATE_WORKER_TYPE, () =>
-      createWorker<SynchronizerWorkerContext>(this.addFile.bind(this))
-    );
-
-    this.queueManager.addWorker(SYNCHRONIZER_REMOVE_WORKER_TYPE, () =>
-      createWorker<SynchronizerWorkerContext>(this.removeFile.bind(this))
-    );
-
-    await this.deleteUnreachedFiles();
-
-    const absoluteRootPath = await this.config.getRootPath();
-
-    this.watcherService.watch(absoluteRootPath, {
-      ignored: /(.+)\.media\/(.+)/,
-    });
-
-    this.watcherService.on(absoluteRootPath, "add", this.onFileDetected);
-    this.watcherService.on(absoluteRootPath, "unlink", this.onFileDeleted);
-  }
-
-  async onModuleDestroy() {
-    const absoluteRootPath = await this.config.getRootPath();
-
-    this.watcherService.off(absoluteRootPath, "unlink", this.onFileDeleted);
-    this.watcherService.off(absoluteRootPath, "add", this.onFileDetected);
-
-    this.watcherService.unwatch(absoluteRootPath);
-  }
-
-  private onFileDetected = async (absolutePath: string): Promise<void> => {
-    this.logger.log(
-      `The entity was detected: ${absolutePath}`,
-      SynchronizerService.name
-    );
-
-    const isFileExists = Boolean(
-      await this.storageManager.findOneFileByAbsolutePath(absolutePath)
-    );
-
-    if (isFileExists) return;
-
-    this.queueManager.addJob(SYNCHRONIZER_CREATE_WORKER_TYPE, {
-      absolutePath,
-    });
-  };
-
-  private onFileDeleted = async (absolutePath: string): Promise<void> => {
-    this.logger.log(
-      `Deleting the entity was detected: ${absolutePath}`,
-      SynchronizerService.name
-    );
-
-    this.queueManager.addJob(SYNCHRONIZER_REMOVE_WORKER_TYPE, {
-      absolutePath,
-    });
-  };
-
-  private async addFile(ctx: SynchronizerWorkerContext) {
-    const { absolutePath } = ctx;
+  @Process("link")
+  async link(job: Job<StorageSyncWorkerCtx>) {
+    const { absolutePath } = job.data;
 
     const absoluteRootPath = await this.config.getRootPath();
 
@@ -130,8 +71,9 @@ export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async removeFile(ctx: SynchronizerWorkerContext) {
-    const { absolutePath } = ctx;
+  @Process("unlink")
+  async unlink(job: Job<StorageSyncWorkerCtx>) {
+    const { absolutePath } = job.data;
 
     const file = await this.storageManager.findOneFileByAbsolutePath(
       absolutePath
@@ -195,18 +137,23 @@ export class SynchronizerService implements OnModuleInit, OnModuleDestroy {
     return this.storageManager.saveDirectory(dir);
   }
 
-  private async deleteUnreachedFiles() {
-    const files = await this.storageManager.findFiles();
+  @OnQueueActive()
+  onQueueActive(job: Job<StorageSyncWorkerCtx>) {
+    this.logger.log("Start of sync", StorageSyncWorker.name);
+  }
 
-    const filesWithDeleteFlag = await Promise.all(
-      files.map(async f => ({
-        ...f,
-        isDeleted: !(await access(f.absolutePath)),
-      }))
-    );
+  @OnQueueProgress()
+  onQueueProgress(job: Job<StorageSyncWorkerCtx>, progress: number) {
+    this.logger.log(`Processing..: ${progress}%`, StorageSyncWorker.name);
+  }
 
-    filesWithDeleteFlag
-      .filter(f => f.isDeleted)
-      .map(f => this.onFileDeleted(f.absolutePath));
+  @OnQueueCompleted()
+  onQueueCompleted(job: Job<StorageSyncWorkerCtx>) {
+    this.logger.log("The sync is done.", StorageSyncWorker.name);
+  }
+
+  @OnQueueFailed()
+  onQueueFailed(job: Job<StorageSyncWorkerCtx>) {
+    this.logger.error("The sync is failed.", StorageSyncWorker.name);
   }
 }

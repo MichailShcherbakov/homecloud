@@ -3,17 +3,14 @@ import { join } from "path";
 import hidefile from "hidefile";
 import { mkdir, rm } from "fs/promises";
 import { ConfigService } from "../config/config.service";
-import { QueueManager } from "../queue/queue.manager";
+import { Queue } from "../queue/queue";
 import { access } from "@server/utils/access";
-import { ConverterWorker, ConverterWorkerContext } from "./converter.worker";
 import { getInfoFromPath } from "@/server/utils/getInfoFromPath";
 import { OnEvent } from "@nestjs/event-emitter";
 import { FileEntity } from "@/server/db/entities/file.entity";
 import { StorageManager } from "../storage/storage.manager";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { JobEntity } from "@/server/db/entities/job.entity";
-
-const CONVERTER_WORKER_TYPE = "CONVERTER_WORKER_TYPE";
+import { InjectQueue } from "../queue/queue.decorators";
 
 export interface ConverterFile {
   inputFilePath: string;
@@ -24,31 +21,11 @@ export interface ConverterFile {
 export class Converter implements OnModuleInit {
   constructor(
     private readonly config: ConfigService,
-    private readonly queue: QueueManager,
     private readonly logger: Logger,
     private readonly storageManager: StorageManager,
-    private readonly emitter: EventEmitter2
-  ) {
-    this.queue.addWorker(CONVERTER_WORKER_TYPE, () => new ConverterWorker());
-
-    this.queue.on("start", (job: JobEntity) => {
-      this.logger.log("Start of conversion...", Converter.name);
-
-      this.emitter.emit("converter.start", job);
-    });
-
-    this.queue.on("done", (result, job: JobEntity) => {
-      this.logger.log("The conversion is done.", Converter.name);
-
-      this.emitter.emit("converter.done", job);
-    });
-
-    this.queue.on("failed", (err, job) => {
-      this.logger.error("The conversion is failed.", Converter.name);
-
-      this.emitter.emit("converter.failed", job);
-    });
-  }
+    private readonly emitter: EventEmitter2,
+    @InjectQueue("converter") private readonly queue: Queue
+  ) {}
 
   async onModuleInit() {
     const absoluteRootPath = await this.config.getRootPath();
@@ -69,7 +46,7 @@ export class Converter implements OnModuleInit {
   }
 
   public addFile(file: ConverterFile) {
-    this.queue.addJob<ConverterWorkerContext>(CONVERTER_WORKER_TYPE, {
+    this.queue.addJob({
       inputFilePath: file.inputFilePath,
       outputFilePath: file.outputFilePath,
     });
@@ -91,13 +68,13 @@ export class Converter implements OnModuleInit {
     );
     const outputFilePath = join(outputDir, `${filename}.m3u8`);
 
-    const isJobFinished = await this.queue.isJobFinished(
-      CONVERTER_WORKER_TYPE,
-      {
-        inputFilePath,
-        outputFilePath,
-      }
-    );
+    const isCompletedJob = await this.queue.isCompletedJob({
+      data: {
+        inputFilePath: inputFilePath,
+        outputFilePath: outputFilePath,
+      },
+      processorName: "converter",
+    });
 
     const isFileExists = await access(
       join(
@@ -109,7 +86,7 @@ export class Converter implements OnModuleInit {
       )
     );
 
-    if (isFileExists && isJobFinished) return;
+    if (isFileExists && isCompletedJob) return;
 
     this.logger.log(
       `Preparing to convert the file...: ${file.absolutePath}`,

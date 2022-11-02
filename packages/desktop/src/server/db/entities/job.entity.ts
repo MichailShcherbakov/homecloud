@@ -1,23 +1,38 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
 
 export enum JobStatusEnum {
   PROCESSING = "PROCESSING",
-  FINISHED = "FINISHED",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
   STOPPED = "STOPPED",
-  ERROR = "ERROR",
 }
 
-@Entity("jobs")
+@Entity("jobs", {})
 export class JobEntity {
   @PrimaryGeneratedColumn("uuid")
   uuid: string;
 
   @Column()
-  ctx: string;
+  data: string;
 
   @Column()
-  type: string;
+  processorName: string;
+
+  @Column()
+  processName: string;
 
   @Column()
   status: JobStatusEnum;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @CreateDateColumn()
+  createdAt: Date;
 }

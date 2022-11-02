@@ -5,6 +5,7 @@ import { AppContoller } from "./app.controller";
 import { ConverterModule } from "./converter";
 import { StorageModule } from "./storage";
 import { ConfigModule } from "./config";
+import { QueueModule } from "./queue";
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ConfigModule } from "./config";
       autoLoadEntities: true,
       synchronize: true,
     }),
+    QueueModule.forRoot(),
     ConfigModule,
     ConverterModule,
     StorageModule,
