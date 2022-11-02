@@ -63,7 +63,10 @@ export class StorageService {
       }),
     ]);
 
-    return [...dirs, ...files];
+    return [
+      ...dirs.map(d => ({ ...d, isDirectory: true })),
+      ...files.map(d => ({ ...d, isFile: true })),
+    ];
   }
 
   async getDirEntities(
@@ -78,7 +81,10 @@ export class StorageService {
       }),
     ]);
 
-    return [...dirs, ...files];
+    return [
+      ...dirs.map(d => ({ ...d, isDirectory: true })),
+      ...files.map(d => ({ ...d, isFile: true })),
+    ];
   }
 
   async getGlobaFilePath(uuid: string): Promise<string> {

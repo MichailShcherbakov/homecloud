@@ -25,32 +25,23 @@ export const InfoBar: React.FC<InfoBarProps> = () => {
         <Category
           icon={DonutIcon}
           title="Usage"
-          subtitle={compressBitesWithDimension(statistics.total_space_size)}
+          subtitle={compressBitesWithDimension(statistics.storage.size)}
         />
         <Category
           icon={FolderIcon}
           title="Folders"
           subtitle={`${
-            statistics.total_dirs_count
+            statistics.directories.count
           } folders | ${compressBitesWithDimension(
-            statistics.total_space_size
-          )}`}
-        />
-        <Category
-          icon={MovieIcon}
-          title="Videos"
-          subtitle={`${
-            statistics.total_file_count
-          } movies | ${compressBitesWithDimension(
-            statistics.total_space_size
+            statistics.directories.size
           )}`}
         />
         <Category
           icon={FileIcon}
-          title="Other files"
+          title="Files"
           subtitle={`${
-            statistics.total_file_count
-          } files | ${compressBitesWithDimension(statistics.total_space_size)}`}
+            statistics.files.count
+          } files | ${compressBitesWithDimension(statistics.files.size)}`}
         />
       </Stack>
     </Stack>
