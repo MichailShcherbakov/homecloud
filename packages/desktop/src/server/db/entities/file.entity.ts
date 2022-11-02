@@ -24,13 +24,13 @@ export class FileEntity {
   @Column({ unique: true })
   relativePath: string;
 
-  @Column({ type: "uuid", name: "directory_uuid", nullable: true })
-  public directoryUUID?: string;
+  @Column({ type: "uuid", name: "parent_directory_uuid", nullable: true })
+  public parentDirectoryUUID?: string;
 
   @ManyToOne(() => DirectoryEntity)
   @JoinColumn({
-    name: "directory_uuid",
+    name: "parent_directory_uuid",
     referencedColumnName: "uuid",
   })
-  public directory?: DirectoryEntity;
+  public parentDirectory?: DirectoryEntity;
 }

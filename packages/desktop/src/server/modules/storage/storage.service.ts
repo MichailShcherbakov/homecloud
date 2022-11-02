@@ -1,11 +1,11 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "../config/config.service";
-import { Entity } from "../file-system/type";
 import { Statistics } from "./type";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DirectoryEntity } from "@/server/db/entities/directory.entity";
 import { IsNull, Repository } from "typeorm";
 import { FileEntity } from "@/server/db/entities/file.entity";
+import { join, parse } from "path";
 
 @Injectable()
 export class StorageService {
@@ -25,7 +25,7 @@ export class StorageService {
       this.filesRepository
         .find({
           where: {
-            directoryUUID: IsNull(),
+            parentDirectoryUUID: IsNull(),
           },
         })
         .then(files => files.reduce((size, f) => size + f.size, 0)),
@@ -53,15 +53,44 @@ export class StorageService {
     };
   }
 
-  async getRootEntities(): Promise<Entity[]> {
-    return [];
+  async getRootEntities(): Promise<(DirectoryEntity | FileEntity)[]> {
+    const [dirs, files] = await Promise.all([
+      this.directoriesRepository.findBy({
+        parentDirectoryUUID: IsNull(),
+      }),
+      this.filesRepository.findBy({
+        parentDirectoryUUID: IsNull(),
+      }),
+    ]);
+
+    return [...dirs, ...files];
   }
 
-  async getDirEntities(uuid: string): Promise<Entity[]> {
-    return [];
+  async getDirEntities(
+    uuid: string
+  ): Promise<(DirectoryEntity | FileEntity)[]> {
+    const [dirs, files] = await Promise.all([
+      this.directoriesRepository.findBy({
+        parentDirectoryUUID: uuid,
+      }),
+      this.filesRepository.findBy({
+        parentDirectoryUUID: uuid,
+      }),
+    ]);
+
+    return [...dirs, ...files];
   }
 
   async getGlobaFilePath(uuid: string): Promise<string> {
-    throw new NotFoundException("The file not found");
+    const rootPath = await this.config.getRootPath();
+    const file = await this.filesRepository.findOneBy({
+      uuid,
+    });
+
+    if (!file) throw new NotFoundException(`The file was not found: ${uuid}`);
+
+    const raw = parse(file.relativePath);
+
+    return join(rootPath, ".media", raw.dir, raw.name, `${raw.name}.m3u8`);
   }
 }

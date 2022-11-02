@@ -50,12 +50,12 @@ export class StorageSyncWorker {
 
     const parentDirectory = await this.getDirectory(fileInfo.absoluteDirPath);
 
-    file.directory = parentDirectory;
-    file.directoryUUID = parentDirectory.uuid;
+    file.parentDirectory = parentDirectory;
+    file.parentDirectoryUUID = parentDirectory.uuid;
 
     await this.storageManager.saveFile(file);
 
-    let currentDirectoryUUID: string | undefined = file.directoryUUID;
+    let currentDirectoryUUID: string | undefined = file.parentDirectoryUUID;
 
     while (currentDirectoryUUID) {
       const directory: DirectoryEntity | null =
@@ -83,7 +83,7 @@ export class StorageSyncWorker {
 
     await this.storageManager.deleteFileByUuid(file.uuid);
 
-    let currentDirectoryUUID = file.directoryUUID;
+    let currentDirectoryUUID = file.parentDirectoryUUID;
 
     while (currentDirectoryUUID) {
       const directory = await this.storageManager.findOneDirectoryByUuid(
