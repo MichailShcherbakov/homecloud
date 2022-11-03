@@ -2,13 +2,13 @@ import { Stack, Typography } from "@mui/material";
 import React from "react";
 import { makeStyles } from "tss-react/mui";
 import { ReactComponent as FileIcon } from "@client/assets/file.svg";
+import { File } from "@/server/modules/file-system/type";
 
 export interface FileCardProps {
-  name: string;
-  uploadedTime: string;
+  file: File;
 }
 
-export const FileCard: React.FC<FileCardProps> = ({ name, uploadedTime }) => {
+export const FileCard: React.FC<FileCardProps> = ({ file }) => {
   const { classes } = useStyle();
   return (
     <Stack
@@ -21,8 +21,10 @@ export const FileCard: React.FC<FileCardProps> = ({ name, uploadedTime }) => {
     >
       <FileIcon className={classes.icon} />
       <Stack direction="column" alignItems="center" width="100%">
-        <Typography className={classes.title}>{name}</Typography>
-        <Typography className={classes.subtitle}>{uploadedTime}</Typography>
+        <Typography className={classes.title}>{file.name}</Typography>
+        <Typography className={classes.subtitle}>
+          {"10/30/2022, 12:08"}
+        </Typography>
       </Stack>
     </Stack>
   );

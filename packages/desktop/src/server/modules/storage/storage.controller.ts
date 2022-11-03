@@ -18,6 +18,11 @@ export class StorageController {
     return this.storageService.getRootEntities();
   }
 
+  @Get("/path-to/:uuid")
+  getPathToDir(@Param("uuid", ParseUUIDPipe) uuid: string) {
+    return this.storageService.getPathToDir(uuid);
+  }
+
   @Get("/dirs/:uuid")
   getDirEntities(@Param("uuid", ParseUUIDPipe) uuid: string) {
     return this.storageService.getDirEntities(uuid);

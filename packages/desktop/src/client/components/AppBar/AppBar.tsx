@@ -4,11 +4,16 @@ import { AppBar as MUIAppBar, Stack, Toolbar } from "@mui/material";
 import { Logo } from "@client/components/Logo";
 
 export interface AppBarProps {
+  onlyIcon?: boolean;
   className?: string;
   children?: React.ReactElement;
 }
 
-export const AppBar: React.FC<AppBarProps> = ({ className, children }) => {
+export const AppBar: React.FC<AppBarProps> = ({
+  onlyIcon,
+  className,
+  children,
+}) => {
   const { classes, cx } = useStyle();
   return (
     <MUIAppBar position="sticky" className={cx(classes.root, className)}>
@@ -18,8 +23,9 @@ export const AppBar: React.FC<AppBarProps> = ({ className, children }) => {
           alignItems="center"
           justifyContent="space-between"
           className={classes.container}
+          spacing={2}
         >
-          <Logo />
+          <Logo onlyIcon={onlyIcon} />
           {children}
         </Stack>
       </Toolbar>

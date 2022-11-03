@@ -1,14 +1,14 @@
 import { Entity } from "@server/modules/file-system/type";
 import { useQuery } from "react-query";
 
-export const useGetRootEntities = () => {
+export const useGetDirEntities = (uuid: string) => {
   const {
     data = [],
     isLoading,
     isError,
     error,
-  } = useQuery("entities", () =>
-    fetch("http://localhost:12536/storage/", { method: "GET" })
+  } = useQuery(["dirs", uuid, "entities"], () =>
+    fetch(`http://localhost:12536/storage/dirs/${uuid}`, { method: "GET" })
       .then(res => res.json())
       .then((data: Entity[]) =>
         data.sort((a, b) => {

@@ -6,3 +6,8 @@ declare module "*.svg" {
   const ReactComponent: React.SFC<React.SVGProps<SVGSVGElement>>;
   export default ReactComponent;
 }
+
+/* eslint-disable no-var */
+declare namespace globalThis {
+  var __DEV__: boolean;
+}

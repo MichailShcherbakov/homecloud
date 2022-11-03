@@ -1,28 +1,14 @@
-export interface IEntity {
-  uuid: string;
-  path: string;
-  name: string;
-  size: number;
-  parentDirUuid: string | null;
-  parentDirPath: string;
+import { DirectoryEntity } from "@/server/db/entities/directory.entity";
+import { FileEntity } from "@/server/db/entities/file.entity";
 
-  /// a file
-  isFile: boolean;
-  ext?: string;
-
-  /// a dir
-  isDirectory: boolean;
-}
-
-export interface File extends IEntity {
+export interface File extends FileEntity {
   isFile: true;
-  isDirectory: false;
+  isDirectory?: false;
 }
 
-export interface Directory extends IEntity {
-  isFile: false;
+export interface Directory extends DirectoryEntity {
+  isFile?: false;
   isDirectory: true;
-  ext?: undefined;
 }
 
 export type Entity = File | Directory;

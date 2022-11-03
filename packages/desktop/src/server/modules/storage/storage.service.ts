@@ -99,4 +99,24 @@ export class StorageService {
 
     return join(rootPath, ".media", raw.dir, raw.name, `${raw.name}.m3u8`);
   }
+
+  async getPathToDir(uuid: string): Promise<DirectoryEntity[]> {
+    let currentDirUuid: string | undefined = uuid;
+    const dirs: DirectoryEntity[] = [];
+
+    while (currentDirUuid) {
+      const dir: DirectoryEntity | null =
+        await this.directoriesRepository.findOneBy({
+          uuid: currentDirUuid,
+        });
+
+      if (!dir) break;
+
+      dirs.unshift(dir);
+
+      currentDirUuid = dir.parentDirectoryUUID;
+    }
+
+    return dirs;
+  }
 }

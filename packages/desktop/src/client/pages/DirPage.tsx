@@ -1,24 +1,28 @@
 import React from "react";
+import { useParams } from "react-router-dom";
 import { Grid, Stack } from "@mui/material";
 import { AppBar } from "@client/components/AppBar";
 import { DirCard, FileCard } from "@client/components/cards";
 import { makeStyles } from "tss-react/mui";
-import { InfoBar } from "@client/components/InfoBar";
 import { SearchBar } from "@client/components/SearchBar";
 import { HostCard } from "@client/components/cards/HostCard";
-import { useGetRootEntities } from "@client/hooks/useGetRootEntities";
+import { useGetDirEntities } from "../hooks/useGetDirEntities";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
-export interface HomePageProps {}
+export interface DirPageProps {}
 
-export const HomePage: React.FC<HomePageProps> = () => {
+export const DirPage: React.FC<DirPageProps> = () => {
   const { classes } = useStyle();
 
-  const { entities } = useGetRootEntities();
+  const { uuid } = useParams();
+
+  const { entities } = useGetDirEntities(uuid as string);
 
   return (
     <Stack direction="column" className={classes.root}>
-      <AppBar className={classes.appBar}>
+      <AppBar className={classes.appBar} onlyIcon>
         <Stack direction="row" alignItems="center" width="100%">
+          <Breadcrumbs />
           <Stack
             direction="row"
             alignItems="center"
@@ -39,9 +43,6 @@ export const HomePage: React.FC<HomePageProps> = () => {
               </Grid>
             ))}
           </Grid>
-        </Stack>
-        <Stack direction="column" className={classes.infoBar}>
-          <InfoBar />
         </Stack>
       </Stack>
     </Stack>

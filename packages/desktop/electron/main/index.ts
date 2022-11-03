@@ -8,6 +8,7 @@
 // ├─┬ dist
 // │ └── index.html    > Electron-Renderer
 //
+process.env.__DEV__ = (!app.isPackaged).toString();
 process.env.DIST_ELECTRON = join(__dirname, "../..");
 process.env.DIST = join(process.env.DIST_ELECTRON, "../renderer");
 process.env.PUBLIC = app.isPackaged

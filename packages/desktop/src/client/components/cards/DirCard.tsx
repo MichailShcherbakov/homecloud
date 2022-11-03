@@ -2,14 +2,16 @@ import { Stack, Typography } from "@mui/material";
 import React from "react";
 import { makeStyles } from "tss-react/mui";
 import { ReactComponent as DirIcon } from "@client/assets/folder.svg";
+import { Directory } from "@/server/modules/file-system/type";
+import { useNavigate } from "react-router-dom";
 
 export interface DirCardProps {
-  name: string;
-  uploadedTime: string;
+  dir: Directory;
 }
 
-export const DirCard: React.FC<DirCardProps> = ({ name, uploadedTime }) => {
+export const DirCard: React.FC<DirCardProps> = ({ dir }) => {
   const { classes } = useStyle();
+  const navigate = useNavigate();
   return (
     <Stack
       component="button"
@@ -18,11 +20,14 @@ export const DirCard: React.FC<DirCardProps> = ({ name, uploadedTime }) => {
       justifyContent="center"
       spacing={1}
       className={classes.root}
+      onClick={() => navigate(`/dirs/${dir.uuid}`)}
     >
       <DirIcon className={classes.icon} />
       <Stack direction="column" alignItems="center" width="100%">
-        <Typography className={classes.title}>{name}</Typography>
-        <Typography className={classes.subtitle}>{uploadedTime}</Typography>
+        <Typography className={classes.title}>{dir.name}</Typography>
+        <Typography className={classes.subtitle}>
+          {"10/30/2022, 12:08"}
+        </Typography>
       </Stack>
     </Stack>
   );

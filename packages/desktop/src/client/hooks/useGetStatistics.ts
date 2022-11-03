@@ -2,7 +2,7 @@ import { Statistics } from "@server/modules/storage/type";
 import { useQuery } from "react-query";
 
 export function useGetStatistics() {
-  const { data, isLoading, isError, error } = useQuery("Statistics", () =>
+  const { data, isLoading, isError, error } = useQuery("statistics", () =>
     fetch("http://localhost:12536/storage/statistics").then(res => res.json())
   );
 
