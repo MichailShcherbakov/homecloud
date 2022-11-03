@@ -50,9 +50,11 @@ export const InfoBar: React.FC<InfoBarProps> = () => {
 
 const useStyle = makeStyles()({
   root: {
-    width: 384,
+    width: 360,
     padding: 16,
     flexGrow: 1,
+    backgroundColor: "#fff",
+    zIndex: 30,
   },
   icon: {
     fill: "#8693b1",

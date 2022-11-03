@@ -74,6 +74,7 @@ const useStyle = makeStyles()({
     backgroundColor: "#fff",
     border: 0,
     boxShadow: "0px 0px 14px 0px #ccc",
+    zIndex: 30,
   },
   toolbar: {
     position: "relative",
