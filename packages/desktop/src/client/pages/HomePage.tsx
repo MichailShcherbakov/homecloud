@@ -1,12 +1,12 @@
 import React from "react";
-import { Grid, Stack } from "@mui/material";
+import { Stack } from "@mui/material";
 import { AppBar } from "@client/components/AppBar";
-import { DirCard, FileCard } from "@client/components/cards";
 import { makeStyles } from "tss-react/mui";
 import { InfoBar } from "@client/components/InfoBar";
 import { SearchBar } from "@client/components/SearchBar";
 import { HostCard } from "@client/components/cards/HostCard";
 import { useGetRootEntities } from "@client/hooks/useGetRootEntities";
+import { CardContainer } from "../components/containers";
 
 export interface HomePageProps {}
 
@@ -23,15 +23,7 @@ export const HomePage: React.FC<HomePageProps> = () => {
         right={<HostCard name="Inner Host" />}
       />
       <Stack direction="row" className={classes.container}>
-        <Stack className={classes.content}>
-          <Grid container spacing={2}>
-            {entities.map(e => (
-              <Grid item key={e.uuid}>
-                {e.isDirectory ? <DirCard dir={e} /> : <FileCard file={e} />}
-              </Grid>
-            ))}
-          </Grid>
-        </Stack>
+        <CardContainer entities={entities} />
         <Stack direction="column" className={classes.infoBar}>
           <InfoBar />
         </Stack>
@@ -48,10 +40,6 @@ const useStyle = makeStyles()({
   },
   container: {
     backgroundColor: "#f8fafd",
-    flexGrow: 1,
-  },
-  content: {
-    padding: 16,
     flexGrow: 1,
   },
   appBar: {
