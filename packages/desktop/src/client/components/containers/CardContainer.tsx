@@ -54,7 +54,10 @@ export const CardContainer: React.FC<CardContainerProps> = ({ entities }) => {
 
 const useStyle = makeStyles()({
   root: {
+    width: "100%",
+    height: "100%",
     padding: 16,
     flexGrow: 1,
+    overflow: "auto",
   },
 });

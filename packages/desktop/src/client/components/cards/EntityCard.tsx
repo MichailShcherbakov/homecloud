@@ -125,6 +125,5 @@ const useStyle = makeStyles<{ isLoading: boolean }>()((_, { isLoading }) => ({
     padding: 8,
     backgroundColor: "#fff",
     borderRadius: "50%",
-    zIndex: 30,
   },
 }));

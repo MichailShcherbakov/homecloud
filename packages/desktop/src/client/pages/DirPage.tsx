@@ -8,6 +8,7 @@ import { HostCard } from "@client/components/cards/HostCard";
 import { useGetDirEntities } from "../hooks/useGetDirEntities";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { CardContainer } from "../components/containers";
+import { UploadingCardContainer } from "../components/containers/UploadingCardContainer";
 
 export interface DirPageProps {}
 
@@ -30,17 +31,22 @@ export const DirPage: React.FC<DirPageProps> = () => {
       <Stack direction="row" className={classes.container}>
         <CardContainer entities={entities} />
       </Stack>
+      <UploadingCardContainer entities={entities} />
     </Stack>
   );
 };
 
 const useStyle = makeStyles()({
   root: {
-    width: "100%",
+    position: "relative",
+    width: "100wh",
     height: "100vh",
     overflow: "hidden",
   },
   container: {
+    width: "100%",
+    height: "100%",
+    overflow: "auto",
     backgroundColor: "#f8fafd",
     flexGrow: 1,
   },
