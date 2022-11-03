@@ -3,9 +3,11 @@ import { ConfigService } from "../config/config.service";
 import { Statistics } from "./type";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DirectoryEntity } from "@/server/db/entities/directory.entity";
-import { IsNull, Repository } from "typeorm";
+import { In, IsNull, Repository } from "typeorm";
 import { FileEntity } from "@/server/db/entities/file.entity";
 import { join, parse } from "path";
+import { JobsStorage } from "./storage.queue-jobs";
+import { fromJSON } from "@/server/utils/json";
 
 @Injectable()
 export class StorageService {
@@ -15,7 +17,8 @@ export class StorageService {
     @InjectRepository(DirectoryEntity)
     private readonly directoriesRepository: Repository<DirectoryEntity>,
     @InjectRepository(FileEntity)
-    private readonly filesRepository: Repository<FileEntity>
+    private readonly filesRepository: Repository<FileEntity>,
+    private readonly jobStorage: JobsStorage
   ) {}
 
   async getStatistics(): Promise<Statistics> {
@@ -54,36 +57,36 @@ export class StorageService {
   }
 
   async getRootEntities(): Promise<(DirectoryEntity | FileEntity)[]> {
-    const [dirs, files] = await Promise.all([
-      this.directoriesRepository.findBy({
-        parentDirectoryUUID: IsNull(),
-      }),
-      this.filesRepository.findBy({
-        parentDirectoryUUID: IsNull(),
-      }),
-    ]);
-
-    return [
-      ...dirs.map(d => ({ ...d, isDirectory: true })),
-      ...files.map(d => ({ ...d, isFile: true })),
-    ];
+    return this.getDirEntities();
   }
 
   async getDirEntities(
-    uuid: string
+    uuid?: string
   ): Promise<(DirectoryEntity | FileEntity)[]> {
     const [dirs, files] = await Promise.all([
       this.directoriesRepository.findBy({
-        parentDirectoryUUID: uuid,
+        parentDirectoryUUID: uuid ? uuid : IsNull(),
       }),
       this.filesRepository.findBy({
-        parentDirectoryUUID: uuid,
+        parentDirectoryUUID: uuid ? uuid : IsNull(),
       }),
     ]);
 
+    const converterProcessingJobs = await this.jobStorage.getProcessingJobs({
+      processorName: "converter",
+    });
+
+    const uploadFilesUuids = new Set(
+      converterProcessingJobs.map(j => (fromJSON(j.data) as any)?.file?.uuid)
+    );
+
     return [
       ...dirs.map(d => ({ ...d, isDirectory: true })),
-      ...files.map(d => ({ ...d, isFile: true })),
+      ...files.map(f => ({
+        ...f,
+        isFile: true,
+        isUploading: uploadFilesUuids.has(f.uuid),
+      })),
     ];
   }
 
@@ -118,5 +121,19 @@ export class StorageService {
     }
 
     return dirs;
+  }
+
+  async getUploadEntities(): Promise<(DirectoryEntity | FileEntity)[]> {
+    const converterProcessingJobs = await this.jobStorage.getProcessingJobs({
+      processorName: "converter",
+    });
+
+    const uploadFilesUuids = converterProcessingJobs.map(
+      j => (fromJSON(j.data) as any)?.file?.uuid
+    );
+
+    return this.filesRepository.findBy({
+      uuid: In(uploadFilesUuids),
+    });
   }
 }

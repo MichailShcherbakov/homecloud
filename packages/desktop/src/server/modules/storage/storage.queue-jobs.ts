@@ -2,7 +2,7 @@ import { JobEntity, JobStatusEnum } from "@/server/db/entities/job.entity";
 import { toJSON } from "@/server/utils/json";
 import { Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Not, Repository } from "typeorm";
 import {
   IQueueJobsStorage,
   Job,
@@ -35,9 +35,18 @@ export class JobsStorage implements IQueueJobsStorage {
     });
   }
 
+  getProcessingJobs(
+    options: { processorName?: string; processName?: string } = {}
+  ): Promise<JobEntity[]> {
+    return this.jobsRepository.findBy({
+      ...options,
+      status: JobStatusEnum.PROCESSING,
+    });
+  }
+
   getUncompletedJobs(): Promise<JobEntity[]> {
     return this.jobsRepository.findBy({
-      status: JobStatusEnum.PROCESSING,
+      status: Not(JobStatusEnum.COMPLETED),
     });
   }
 

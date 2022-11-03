@@ -1,23 +1,25 @@
 import React from "react";
-import {
-  BrowserRouter,
-  HashRouter,
-  Route,
-  Routes,
-  useLocation,
-} from "react-router-dom";
+import { HashRouter, Route, Routes } from "react-router-dom";
 import { HomePage } from "@client/pages";
 import { DirPage } from "./pages/DirPage";
+import {
+  SubscriptionsProvider,
+  useSocket,
+} from "./common/SubscriptionsContext";
 
 export interface AppProps {}
 
 export const App: React.FC<AppProps> = () => {
+  const socket = useSocket();
+
   return (
-    <HashRouter basename="/">
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/dirs/:uuid" element={<DirPage />} />
-      </Routes>
-    </HashRouter>
+    <SubscriptionsProvider value={{ socket }}>
+      <HashRouter basename="/">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/dirs/:uuid" element={<DirPage />} />
+        </Routes>
+      </HashRouter>
+    </SubscriptionsProvider>
   );
 };

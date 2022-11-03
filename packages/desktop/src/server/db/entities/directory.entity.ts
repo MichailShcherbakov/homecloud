@@ -1,9 +1,11 @@
 import {
   Column,
+  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from "typeorm";
 
 @Entity("directories")
@@ -32,4 +34,10 @@ export class DirectoryEntity {
     referencedColumnName: "uuid",
   })
   public parentDirectory?: DirectoryEntity;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @CreateDateColumn()
+  createdAt: Date;
 }

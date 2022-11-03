@@ -4,16 +4,18 @@ import { getFileStat } from "@/server/utils/getFileStat";
 import { ConfigService } from "../config/config.service";
 import {
   Job,
-  OnQueueActive,
-  OnQueueCompleted,
-  OnQueueFailed,
-  OnQueueProgress,
+  OnJobActive,
+  OnJobCompleted,
+  OnJobFailed,
+  OnJobProgress,
   Process,
   Processor,
 } from "../queue";
 import { StorageManager } from "./storage.manager";
 import { basename, dirname } from "path";
 import { Logger } from "@nestjs/common";
+import { StorageGateway } from "./storage.gateway";
+import { StorageGatewayEventsEnum } from "./storage.events";
 
 export interface StorageSyncWorkerCtx {
   absolutePath: string;
@@ -24,11 +26,12 @@ export class StorageSyncWorker {
   constructor(
     private readonly logger: Logger,
     private readonly config: ConfigService,
-    private readonly storageManager: StorageManager
+    private readonly storageManager: StorageManager,
+    private readonly gateway: StorageGateway
   ) {}
 
   @Process("link")
-  async link(job: Job<StorageSyncWorkerCtx>) {
+  async link(job: Job<StorageSyncWorkerCtx>): Promise<FileEntity | undefined> {
     const { absolutePath } = job.data;
 
     const absoluteRootPath = await this.config.getRootPath();
@@ -53,7 +56,7 @@ export class StorageSyncWorker {
     file.parentDirectory = parentDirectory;
     file.parentDirectoryUUID = parentDirectory.uuid;
 
-    await this.storageManager.saveFile(file);
+    const fileEntity = await this.storageManager.saveFile(file);
 
     let currentDirectoryUUID: string | undefined = file.parentDirectoryUUID;
 
@@ -69,10 +72,14 @@ export class StorageSyncWorker {
 
       currentDirectoryUUID = directory.parentDirectoryUUID;
     }
+
+    return fileEntity;
   }
 
   @Process("unlink")
-  async unlink(job: Job<StorageSyncWorkerCtx>) {
+  async unlink(
+    job: Job<StorageSyncWorkerCtx>
+  ): Promise<FileEntity | undefined> {
     const { absolutePath } = job.data;
 
     const file = await this.storageManager.findOneFileByAbsolutePath(
@@ -100,6 +107,8 @@ export class StorageSyncWorker {
 
       currentDirectoryUUID = directory.parentDirectoryUUID;
     }
+
+    return file;
   }
 
   private async getDirectory(absoluteDirPath: string) {
@@ -137,23 +146,33 @@ export class StorageSyncWorker {
     return this.storageManager.saveDirectory(dir);
   }
 
-  @OnQueueActive()
-  onQueueActive(job: Job<StorageSyncWorkerCtx>) {
+  @OnJobActive()
+  onJobActive(job: Job<StorageSyncWorkerCtx>) {
     this.logger.log("Start of sync", StorageSyncWorker.name);
   }
 
-  @OnQueueProgress()
-  onQueueProgress(job: Job<StorageSyncWorkerCtx>, progress: number) {
+  @OnJobProgress()
+  onJobProgress(job: Job<StorageSyncWorkerCtx>, progress: number) {
     this.logger.log(`Processing..: ${progress}%`, StorageSyncWorker.name);
   }
 
-  @OnQueueCompleted()
-  onQueueCompleted(job: Job<StorageSyncWorkerCtx>) {
+  @OnJobCompleted()
+  onJobCompleted(job: Job<StorageSyncWorkerCtx>) {
     this.logger.log("The sync is done.", StorageSyncWorker.name);
   }
 
-  @OnQueueFailed()
-  onQueueFailed(job: Job<StorageSyncWorkerCtx>) {
+  @OnJobCompleted("link")
+  onLinkJobCompleted(
+    job: Job<StorageSyncWorkerCtx>,
+    result: FileEntity | undefined
+  ) {
+    this.gateway.sendMessage(StorageGatewayEventsEnum.ON_NEW_ENTITY_DETECTED, {
+      file: result,
+    });
+  }
+
+  @OnJobFailed()
+  onJobFailed(job: Job<StorageSyncWorkerCtx>) {
     this.logger.error("The sync is failed.", StorageSyncWorker.name);
   }
 }

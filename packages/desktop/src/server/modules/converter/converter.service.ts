@@ -11,11 +11,7 @@ import { FileEntity } from "@/server/db/entities/file.entity";
 import { StorageManager } from "../storage/storage.manager";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { InjectQueue } from "../queue/queue.decorators";
-
-export interface ConverterFile {
-  inputFilePath: string;
-  outputFilePath: string;
-}
+import { ConverterWorkerJobData } from "./converter.worker";
 
 @Injectable()
 export class Converter implements OnModuleInit {
@@ -45,11 +41,8 @@ export class Converter implements OnModuleInit {
     }
   }
 
-  public addFile(file: ConverterFile) {
-    this.queue.addJob({
-      inputFilePath: file.inputFilePath,
-      outputFilePath: file.outputFilePath,
-    });
+  public addFile(file: ConverterWorkerJobData) {
+    this.queue.addJob(file);
   }
 
   @OnEvent("storage.add_file")
@@ -70,6 +63,7 @@ export class Converter implements OnModuleInit {
 
     const existsJob = await this.queue.hasJob({
       data: {
+        file,
         inputFilePath: inputFilePath,
         outputFilePath: outputFilePath,
       },
@@ -96,6 +90,7 @@ export class Converter implements OnModuleInit {
     await mkdir(outputDir, { recursive: true });
 
     this.addFile({
+      file,
       inputFilePath,
       outputFilePath,
     });

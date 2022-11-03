@@ -3,7 +3,7 @@ import { useQuery } from "react-query";
 
 export function useGetStatistics() {
   const { data, isLoading, isError, error } = useQuery("statistics", () =>
-    fetch("http://localhost:12536/storage/statistics").then(res => res.json())
+    fetch("http://localhost:12536/storage/statistics/").then(res => res.json())
   );
 
   return {

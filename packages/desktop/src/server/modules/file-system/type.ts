@@ -4,6 +4,7 @@ import { FileEntity } from "@/server/db/entities/file.entity";
 export interface File extends FileEntity {
   isFile: true;
   isDirectory?: false;
+  isUploading: boolean;
 }
 
 export interface Directory extends DirectoryEntity {

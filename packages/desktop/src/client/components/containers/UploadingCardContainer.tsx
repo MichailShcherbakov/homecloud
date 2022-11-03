@@ -8,15 +8,21 @@ import {
 import { Entity } from "@/server/modules/file-system/type";
 import { makeStyles } from "tss-react/mui";
 import { EntityLoadingCard } from "../cards/EntityLoadingCard";
+import { useGetUploadProgress } from "@/client/hooks/useGetUploadProgress";
 
 export interface UploadingCardContainerProps {
-  entities: Entity[];
+  entities?: Entity[];
 }
 
 export const UploadingCardContainer: React.FC<UploadingCardContainerProps> = ({
   entities,
 }) => {
   const { classes } = useStyle();
+
+  const { progress } = useGetUploadProgress();
+
+  if (!entities?.length) return null;
+
   return (
     <Stack className={classes.root}>
       <Stack className={classes.headerContainer}>
@@ -29,7 +35,7 @@ export const UploadingCardContainer: React.FC<UploadingCardContainerProps> = ({
       </Stack>
       <LinearProgress
         variant="determinate"
-        value={50}
+        value={progress}
         className={classes.progress}
       />
     </Stack>
@@ -45,7 +51,7 @@ const useStyle = makeStyles()({
     borderRadius: 8,
     boxShadow: "0px 0px 14px 0px #ccc",
     backgroundColor: "#fff",
-    zIndex: 20,
+    zIndex: 32,
   },
   headerContainer: {
     padding: 12,

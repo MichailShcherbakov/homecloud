@@ -19,6 +19,7 @@ export interface ProcessOptions {
 }
 
 export interface ListenerOptions {
+  processName?: string;
   eventName: QueueEventsEnum;
 }
 
@@ -33,14 +34,26 @@ export const InjectQueue = (name?: string) => Inject(getQueueToken(name));
 export const QueueJobsStorage = () =>
   SetMetadata(QUEUE_MODULE_JOBS_STORAGE, { isStorage: true });
 
-export const OnQueueActive = () =>
-  SetMetadata(QUEUE_MODULE_LISTENER, { eventName: QueueEventsEnum.ACTIVE });
+export const OnJobActive = (processName?: string) =>
+  SetMetadata(QUEUE_MODULE_LISTENER, {
+    processName,
+    eventName: QueueEventsEnum.ACTIVE,
+  });
 
-export const OnQueueProgress = () =>
-  SetMetadata(QUEUE_MODULE_LISTENER, { eventName: QueueEventsEnum.PROGRESS });
+export const OnJobProgress = (processName?: string) =>
+  SetMetadata(QUEUE_MODULE_LISTENER, {
+    processName,
+    eventName: QueueEventsEnum.PROGRESS,
+  });
 
-export const OnQueueCompleted = () =>
-  SetMetadata(QUEUE_MODULE_LISTENER, { eventName: QueueEventsEnum.COMPLETED });
+export const OnJobCompleted = (processName?: string) =>
+  SetMetadata(QUEUE_MODULE_LISTENER, {
+    processName,
+    eventName: QueueEventsEnum.COMPLETED,
+  });
 
-export const OnQueueFailed = () =>
-  SetMetadata(QUEUE_MODULE_LISTENER, { eventName: QueueEventsEnum.FAILED });
+export const OnJobFailed = (processName?: string) =>
+  SetMetadata(QUEUE_MODULE_LISTENER, {
+    processName,
+    eventName: QueueEventsEnum.FAILED,
+  });

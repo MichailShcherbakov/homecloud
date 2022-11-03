@@ -28,6 +28,11 @@ export class StorageController {
     return this.storageService.getDirEntities(uuid);
   }
 
+  @Get("/upload")
+  getUploadEntities() {
+    return this.storageService.getUploadEntities();
+  }
+
   @Get("/files/:uuid/:segment")
   async getFileSegment(
     @Param("uuid", ParseUUIDPipe) uuid: string,

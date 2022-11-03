@@ -6,8 +6,8 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule } from "../config/config.module";
 import { QueueModule } from "../queue";
 import { StorageController } from "./storage.controller";
+import { StorageGateway } from "./storage.gateway";
 import { StorageManager } from "./storage.manager";
-import { JobsStorage } from "./storage.queue-jobs";
 import { StorageService } from "./storage.service";
 import { StorageSyncService } from "./storage.sync.service";
 import { StorageSyncWorker } from "./storage.sync.worker";
@@ -29,6 +29,7 @@ import { WatcherService } from "./watcher.service";
     StorageSyncService,
     StorageSyncWorker,
     StorageManager,
+    StorageGateway,
     WatcherService,
   ],
   exports: [
@@ -36,6 +37,7 @@ import { WatcherService } from "./watcher.service";
     StorageSyncService,
     StorageSyncWorker,
     StorageManager,
+    StorageGateway,
     WatcherService,
   ],
 })

@@ -7,6 +7,8 @@ import { SearchBar } from "@client/components/SearchBar";
 import { HostCard } from "@client/components/cards/HostCard";
 import { useGetRootEntities } from "@client/hooks/useGetRootEntities";
 import { CardContainer } from "../components/containers";
+import { UploadingCardContainer } from "../components/containers/UploadingCardContainer";
+import { useGetUploadEntities } from "../hooks/useGetUploadEntities";
 
 export interface HomePageProps {}
 
@@ -14,6 +16,7 @@ export const HomePage: React.FC<HomePageProps> = () => {
   const { classes } = useStyle();
 
   const { entities } = useGetRootEntities();
+  const { entities: uploadEntities } = useGetUploadEntities();
 
   return (
     <Stack direction="column" className={classes.root}>
@@ -27,6 +30,7 @@ export const HomePage: React.FC<HomePageProps> = () => {
         <Stack direction="column" className={classes.infoBar}>
           <InfoBar />
         </Stack>
+        <UploadingCardContainer entities={uploadEntities} />
       </Stack>
     </Stack>
   );
@@ -34,6 +38,7 @@ export const HomePage: React.FC<HomePageProps> = () => {
 
 const useStyle = makeStyles()({
   root: {
+    position: "relative",
     width: "100%",
     height: "100vh",
     overflow: "hidden",

@@ -121,8 +121,9 @@ export class Queue extends EventListener {
       const processorInstance = async () => {
         try {
           await this.storage.saveJob(job, JobStatusEnum.PROCESSING);
-          await p(job);
+          const result = await p(job);
           await this.storage.saveJob(job, JobStatusEnum.COMPLETED);
+          return result;
         } catch (e) {
           await this.storage.saveJob(job, JobStatusEnum.FAILED);
           throw e;

@@ -3,7 +3,7 @@ import { Entity, File } from "@server/modules/file-system/type";
 import { useQuery, useQueryClient } from "react-query";
 import { useSubscribe } from "../common/SubscriptionsContext";
 
-export const useGetDirEntities = (uuid: string) => {
+export const useGetUploadEntities = () => {
   const queryClient = useQueryClient();
 
   const {
@@ -11,8 +11,8 @@ export const useGetDirEntities = (uuid: string) => {
     isLoading,
     isError,
     error,
-  } = useQuery(["dirs", uuid, "entities"], () =>
-    fetch(`http://localhost:12536/storage/dirs/${uuid}/`, { method: "GET" })
+  } = useQuery(["entities", "upload"], () =>
+    fetch(`http://localhost:12536/storage/upload/`, { method: "GET" })
       .then(res => res.json())
       .then((data: Entity[]) =>
         data.sort((a, b) => {
@@ -26,27 +26,13 @@ export const useGetDirEntities = (uuid: string) => {
       )
   );
 
-  useSubscribe(
-    StorageGatewayEventsEnum.ON_NEW_ENTITY_DETECTED,
-    (data: { file: File }) => {
-      const { file } = data;
+  useSubscribe(StorageGatewayEventsEnum.ON_NEW_ENTITY_DETECTED, () => {
+    queryClient.invalidateQueries(["entities", "upload"]);
+  });
 
-      if (file.parentDirectoryUUID !== uuid) return;
-
-      queryClient.invalidateQueries(["dirs", uuid, "entities"]);
-    }
-  );
-
-  useSubscribe(
-    StorageGatewayEventsEnum.ON_NEW_ENTITY_UPLOADED,
-    (data: { file: File }) => {
-      const { file } = data;
-
-      if (file.parentDirectoryUUID !== uuid) return;
-
-      queryClient.invalidateQueries(["dirs", uuid, "entities"]);
-    }
-  );
+  useSubscribe(StorageGatewayEventsEnum.ON_NEW_ENTITY_UPLOADED, () => {
+    queryClient.invalidateQueries(["entities", "upload"]);
+  });
 
   return {
     entities: data as Entity[],

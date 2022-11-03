@@ -9,6 +9,7 @@ import { useGetDirEntities } from "../hooks/useGetDirEntities";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { CardContainer } from "../components/containers";
 import { UploadingCardContainer } from "../components/containers/UploadingCardContainer";
+import { useGetUploadEntities } from "../hooks/useGetUploadEntities";
 
 export interface DirPageProps {}
 
@@ -18,6 +19,7 @@ export const DirPage: React.FC<DirPageProps> = () => {
   const { uuid } = useParams();
 
   const { entities } = useGetDirEntities(uuid as string);
+  const { entities: uploadEntities } = useGetUploadEntities();
 
   return (
     <Stack direction="column" className={classes.root}>
@@ -31,7 +33,7 @@ export const DirPage: React.FC<DirPageProps> = () => {
       <Stack direction="row" className={classes.container}>
         <CardContainer entities={entities} />
       </Stack>
-      <UploadingCardContainer entities={entities} />
+      <UploadingCardContainer entities={uploadEntities} />
     </Stack>
   );
 };

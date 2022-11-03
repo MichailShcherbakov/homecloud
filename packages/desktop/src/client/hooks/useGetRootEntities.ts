@@ -1,7 +1,11 @@
-import { Entity } from "@server/modules/file-system/type";
-import { useQuery } from "react-query";
+import { StorageGatewayEventsEnum } from "@/server/modules/storage/storage.events";
+import { Entity, File } from "@server/modules/file-system/type";
+import { useQuery, useQueryClient } from "react-query";
+import { useSubscribe } from "../common/SubscriptionsContext";
 
 export const useGetRootEntities = () => {
+  const queryClient = useQueryClient();
+
   const {
     data = [],
     isLoading,
@@ -20,6 +24,28 @@ export const useGetRootEntities = () => {
           return 0;
         })
       )
+  );
+
+  useSubscribe(
+    StorageGatewayEventsEnum.ON_NEW_ENTITY_DETECTED,
+    (data: { file: File }) => {
+      const { file } = data;
+
+      if (file.parentDirectoryUUID) return;
+
+      queryClient.invalidateQueries("entities");
+    }
+  );
+
+  useSubscribe(
+    StorageGatewayEventsEnum.ON_NEW_ENTITY_UPLOADED,
+    (data: { file: File }) => {
+      const { file } = data;
+
+      if (file.parentDirectoryUUID) return;
+
+      queryClient.invalidateQueries("entities");
+    }
   );
 
   return {

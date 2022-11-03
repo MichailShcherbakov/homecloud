@@ -42,6 +42,7 @@ export const CardContainer: React.FC<CardContainerProps> = ({ entities }) => {
             <EntityCard
               entity={e}
               isActive={activeEntity === e}
+              isLoading={e.isFile && e.isUploading}
               onClick={onCardClick}
               onDoubleClick={onCardDoubleClick}
             />

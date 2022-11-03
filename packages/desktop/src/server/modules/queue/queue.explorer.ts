@@ -68,7 +68,15 @@ export class QueueExplorer implements OnModuleInit {
               instance[key]
             );
 
-            queue.on(metadata.eventName, instance[key].bind(instance));
+            queue.on(metadata.eventName, (job: Job, ...args) => {
+              if (
+                metadata.processName &&
+                metadata.processName !== job.processName
+              )
+                return;
+
+              instance[key](job, ...args);
+            });
           }
         }
       );
