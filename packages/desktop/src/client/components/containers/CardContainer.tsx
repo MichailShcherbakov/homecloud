@@ -11,8 +11,29 @@ export interface CardContainerProps {
 
 export const CardContainer: React.FC<CardContainerProps> = ({ entities }) => {
   const [activeEntity, setActiveEntity] = React.useState<Entity | null>(null);
+
   const { classes } = useStyle();
+
   const navigate = useNavigate();
+
+  const onCardClick = React.useCallback(
+    (
+      entity: Entity,
+      event: React.MouseEvent<HTMLButtonElement, MouseEvent>
+    ) => {
+      event.stopPropagation();
+
+      setActiveEntity(entity);
+    },
+    []
+  );
+
+  const onCardDoubleClick = React.useCallback((entity: Entity) => {
+    if (!entity.isDirectory) return;
+
+    navigate(`/dirs/${entity.uuid}`);
+  }, []);
+
   return (
     <Stack className={classes.root} onClick={() => setActiveEntity(null)}>
       <Grid container spacing={2}>
@@ -21,16 +42,8 @@ export const CardContainer: React.FC<CardContainerProps> = ({ entities }) => {
             <EntityCard
               entity={e}
               isActive={activeEntity === e}
-              onClick={(dir, event) => {
-                event.stopPropagation();
-
-                setActiveEntity(dir);
-              }}
-              onDoubleClick={() => {
-                if (!e.isDirectory) return;
-
-                navigate(`/dirs/${e.uuid}`);
-              }}
+              onClick={onCardClick}
+              onDoubleClick={onCardDoubleClick}
             />
           </Grid>
         ))}
