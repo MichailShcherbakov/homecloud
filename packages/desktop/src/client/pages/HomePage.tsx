@@ -17,19 +17,11 @@ export const HomePage: React.FC<HomePageProps> = () => {
 
   return (
     <Stack direction="column" className={classes.root}>
-      <AppBar className={classes.appBar}>
-        <Stack direction="row" alignItems="center" width="100%">
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="center"
-            width="100%"
-          >
-            <SearchBar />
-          </Stack>
-          <HostCard name="Inner Host" />
-        </Stack>
-      </AppBar>
+      <AppBar
+        className={classes.appBar}
+        center={<SearchBar />}
+        right={<HostCard name="Inner Host" />}
+      />
       <Stack direction="row" className={classes.container}>
         <Stack className={classes.content}>
           <Grid container spacing={2}>
