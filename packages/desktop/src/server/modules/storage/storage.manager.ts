@@ -5,7 +5,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ConfigService } from "../config/config.service";
-import { basename, dirname } from "path";
 
 @Injectable()
 export class StorageManager {
@@ -18,28 +17,28 @@ export class StorageManager {
     private readonly filesRepository: Repository<FileEntity>
   ) {}
 
-  public findOneDirectoryByUuid(uuid: string) {
+  public getDirectoryByUuid(uuid: string) {
     return this.directoriesRepository.findOneBy({
       uuid,
     });
   }
 
-  public findOneDirectoryByAbsolutePath(absolutePath: string) {
+  public getDirectoryByAbsolutePath(absolutePath: string) {
     return this.directoriesRepository.findOneBy({
       absolutePath,
     });
   }
 
   public async deleteDirectoryByUuid(uuid: string) {
-    const dir = await this.findOneDirectoryByUuid(uuid);
+    const dir = await this.getDirectoryByUuid(uuid);
 
-    if (!dir) return;
+    if (!dir) throw new Error(`The directory was not found: ${uuid}`);
 
-    this.emitter.emit("storage.remove_dir", dir);
-
-    return this.directoriesRepository.delete({
+    await this.directoriesRepository.delete({
       uuid,
     });
+
+    this.emitter.emit("storage.remove_dir", dir);
   }
 
   public async saveDirectory(directory: DirectoryEntity) {
@@ -50,45 +49,57 @@ export class StorageManager {
     return newDir;
   }
 
-  public findFiles() {
+  public getFiles() {
     return this.filesRepository.find();
   }
 
-  public findOneFileByUuid(uuid: string) {
+  public getFileByUuid(uuid: string) {
     return this.filesRepository.findOneBy({
       uuid,
     });
   }
 
-  public findOneFileByAbsolutePath(absolutePath: string) {
+  public getFileByAbsolutePath(absolutePath: string) {
     return this.filesRepository.findOneBy({
       absolutePath,
     });
   }
 
   public async deleteFileByUuid(uuid: string) {
-    const file = await this.findOneFileByUuid(uuid);
+    const file = await this.getFileByUuid(uuid);
 
-    if (!file) return;
+    if (!file) throw new Error(`The file was not found: ${uuid}`);
 
-    this.emitter.emit("storage.remove_file", file);
-
-    return this.filesRepository.delete({
+    await this.filesRepository.delete({
       uuid,
     });
+
+    let currentDirectoryUUID = file.parentDirectoryUUID;
+
+    while (currentDirectoryUUID) {
+      const directory = await this.getDirectoryByUuid(currentDirectoryUUID);
+
+      if (!directory) break;
+
+      directory.size -= file.size;
+
+      await this.saveDirectory(directory);
+
+      currentDirectoryUUID = directory.parentDirectoryUUID;
+    }
+
+    this.emitter.emit("storage.remove_file", file);
   }
 
   public async saveFile(file: FileEntity) {
     const newFile = await this.filesRepository.save(file);
 
-    let currentDirectoryUUID: string | undefined = file.parentDirectoryUUID;
+    let currentDirectoryUUID = file.parentDirectoryUUID;
 
     while (currentDirectoryUUID) {
-      const directory: DirectoryEntity | null =
-        await this.findOneDirectoryByUuid(currentDirectoryUUID);
+      const directory = await this.getDirectoryByUuid(currentDirectoryUUID);
 
-      if (!directory)
-        throw new Error(`The directory was not found: ${currentDirectoryUUID}`);
+      if (!directory) break;
 
       directory.size += file.size;
 
@@ -102,7 +113,7 @@ export class StorageManager {
     return newFile;
   }
 
-  public async getDirectoryByAbsolutePath(
+  /* public async getDirectoryByAbsolutePath(
     absoluteDirPath: string
   ): Promise<DirectoryEntity> {
     const directory = await this.findOneDirectoryByAbsolutePath(
@@ -111,7 +122,7 @@ export class StorageManager {
 
     if (directory) return directory;
 
-    const absoluteRootPath = await this.config.getRootPath();
+    const absoluteRootPath = await this.config.getAbsoluteRootPath();
 
     const dir = new DirectoryEntity();
 
@@ -138,5 +149,5 @@ export class StorageManager {
     }
 
     return this.saveDirectory(dir);
-  }
+  } */
 }

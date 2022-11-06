@@ -24,7 +24,9 @@ export class Converter implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    const absoluteRootPath = await this.config.getRootPath();
+    return;
+
+    const absoluteRootPath = await this.config.getAbsoluteRootPath();
     const mediaDirPath = `${absoluteRootPath}/.media`;
     const isMediaDirExists = await access(mediaDirPath);
 
@@ -34,7 +36,7 @@ export class Converter implements OnModuleInit {
       hidefile.hideSync(mediaDirPath);
     }
 
-    const files = await this.storageManager.findFiles();
+    const files = await this.storageManager.getFiles();
 
     for (const file of files) {
       this.onAddFile(file);
@@ -47,7 +49,9 @@ export class Converter implements OnModuleInit {
 
   @OnEvent("storage.add_file")
   private async onAddFile(file: FileEntity) {
-    const absoluteRootPath = await this.config.getRootPath();
+    return;
+
+    const absoluteRootPath = await this.config.getAbsoluteRootPath();
 
     const { filename, relativeDirPath } = getInfoFromPath(
       absoluteRootPath,
@@ -103,7 +107,9 @@ export class Converter implements OnModuleInit {
 
   @OnEvent("storage.remove_file")
   private async onRemoveFile(file: FileEntity) {
-    const absoluteRootPath = await this.config.getRootPath();
+    return;
+
+    const absoluteRootPath = await this.config.getAbsoluteRootPath();
 
     const { filename, relativeDirPath } = getInfoFromPath(
       absoluteRootPath,

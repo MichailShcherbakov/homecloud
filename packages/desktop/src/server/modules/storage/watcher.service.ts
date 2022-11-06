@@ -1,6 +1,16 @@
 import { Injectable } from "@nestjs/common";
 import chokidar from "chokidar";
 
+export enum WatcherEventEnum {
+  ON_FILE_ADDED = "add",
+  ON_FILE_MODIFIED = "change",
+  ON_FILE_REMOVED = "unlink",
+  ON_DIR_ADDED = "addDir",
+  ON_DIR_REMOVED = "unlinkDir",
+  ON_ERROR = "error",
+  ON_READY = "ready",
+}
+
 @Injectable()
 export class WatcherService {
   private readonly watchers: Map<string, chokidar.FSWatcher> = new Map<
@@ -8,10 +18,16 @@ export class WatcherService {
     chokidar.FSWatcher
   >();
 
-  public watch(path: string, options: { ignored?: RegExp } = {}): void {
+  public watch(
+    path: string,
+    options: { ignored?: RegExp; ignoreInitial?: boolean } = {}
+  ): void {
     if (this.watchers.has(path)) return;
 
-    this.watchers.set(path, chokidar.watch(path, options));
+    this.watchers.set(
+      path,
+      chokidar.watch(path, { ...options, persistent: true })
+    );
   }
 
   public unwatch(path: string): void {
@@ -32,7 +48,11 @@ export class WatcherService {
     return this.watchers.get(path);
   }
 
-  public on(path: string, event: string, cb: (path: string) => void): void {
+  public on(
+    path: string,
+    event: WatcherEventEnum,
+    cb: (path: string) => void
+  ): void {
     const watcher = this.getWatcher(path);
 
     if (!watcher) return;
@@ -40,7 +60,11 @@ export class WatcherService {
     watcher.on(event, cb);
   }
 
-  public off(path: string, event: string, cb: (path: string) => void): void {
+  public off(
+    path: string,
+    event: WatcherEventEnum,
+    cb: (path: string) => void
+  ): void {
     const watcher = this.getWatcher(path);
 
     if (!watcher) return;

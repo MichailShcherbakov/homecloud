@@ -1,6 +1,6 @@
 import { DirectoryEntity } from "@/server/db/entities/directory.entity";
 import { FileEntity } from "@/server/db/entities/file.entity";
-import { getFileStat } from "@/server/utils/getFileStat";
+import { getFileInfo } from "@/server/utils/getFileInfo";
 import { ConfigService } from "../config/config.service";
 import {
   Job,
@@ -15,6 +15,14 @@ import { StorageManager } from "./storage.manager";
 import { Logger } from "@nestjs/common";
 import { StorageGateway } from "./storage.gateway";
 import { StorageGatewayEventsEnum } from "./storage.events";
+import { parse } from "path";
+
+export enum SyncWorkerProcessEnum {
+  ADD_FILE = "ADD_FILE",
+  REMOVE_FILE = "REMOVE_FILE",
+  ADD_DIR = "ADD_DIR",
+  REMOVE_DIR = "REMOVE_DIR",
+}
 
 export interface StorageSyncWorkerCtx {
   absolutePath: string;
@@ -25,24 +33,16 @@ export class StorageSyncWorker {
   constructor(
     private readonly logger: Logger,
     private readonly config: ConfigService,
-    private readonly storageManager: StorageManager,
-    private readonly gateway: StorageGateway
+    private readonly storageManager: StorageManager
   ) {}
 
-  @Process("link")
-  async link(job: Job<StorageSyncWorkerCtx>): Promise<FileEntity> {
+  @Process(SyncWorkerProcessEnum.ADD_FILE)
+  async addFile(job: Job<StorageSyncWorkerCtx>): Promise<FileEntity> {
     const { absolutePath } = job.data;
 
-    const isFileExists = Boolean(
-      await this.storageManager.findOneFileByAbsolutePath(absolutePath)
-    );
+    const absoluteRootPath = await this.config.getAbsoluteRootPath();
 
-    if (isFileExists)
-      throw new Error(`The file already exists: ${absolutePath}`);
-
-    const absoluteRootPath = await this.config.getRootPath();
-
-    const fileInfo = await getFileStat(absolutePath);
+    const fileInfo = await getFileInfo(absolutePath);
 
     if (!fileInfo) throw new Error(`Failed to get file info: ${absolutePath}`);
 
@@ -53,7 +53,7 @@ export class StorageSyncWorker {
     file.relativePath = file.absolutePath.replace(absoluteRootPath, "");
 
     if (fileInfo.absoluteDirPath === absoluteRootPath) {
-      return await this.storageManager.saveFile(file);
+      return this.storageManager.saveFile(file);
     }
 
     const parentDirectory =
@@ -61,44 +61,80 @@ export class StorageSyncWorker {
         fileInfo.absoluteDirPath
       );
 
+    if (!parentDirectory)
+      throw new Error(
+        `The parent directory was not found: ${fileInfo.absoluteDirPath}`
+      );
+
     file.parentDirectory = parentDirectory;
     file.parentDirectoryUUID = parentDirectory.uuid;
 
-    return await this.storageManager.saveFile(file);
+    return this.storageManager.saveFile(file);
   }
 
-  @Process("unlink")
-  async unlink(job: Job<StorageSyncWorkerCtx>): Promise<FileEntity> {
+  @Process(SyncWorkerProcessEnum.REMOVE_FILE)
+  async removeFile(job: Job<StorageSyncWorkerCtx>): Promise<FileEntity> {
     const { absolutePath } = job.data;
 
-    const file = await this.storageManager.findOneFileByAbsolutePath(
-      absolutePath
-    );
+    const file = await this.storageManager.getFileByAbsolutePath(absolutePath);
 
     if (!file) throw new Error(`The file was not found: ${absolutePath}`);
 
     await this.storageManager.deleteFileByUuid(file.uuid);
 
-    let currentDirectoryUUID = file.parentDirectoryUUID;
+    return file;
+  }
 
-    while (currentDirectoryUUID) {
-      const directory = await this.storageManager.findOneDirectoryByUuid(
-        currentDirectoryUUID
-      );
+  @Process(SyncWorkerProcessEnum.ADD_DIR)
+  async addDir(job: Job<StorageSyncWorkerCtx>): Promise<FileEntity> {
+    const { absolutePath } = job.data;
 
-      if (!directory)
-        throw new Error(`The directory was not found: ${currentDirectoryUUID}`);
+    const isDirExists = !!(await this.storageManager.getDirectoryByAbsolutePath(
+      absolutePath
+    ));
 
-      directory.size -= file.size;
+    if (isDirExists)
+      throw new Error(`The directory already exists: ${absolutePath}`);
 
-      if (directory.size === 0)
-        await this.storageManager.deleteDirectoryByUuid(directory.uuid);
-      else await this.storageManager.saveDirectory(directory);
+    const absoluteRootPath = await this.config.getAbsoluteRootPath();
 
-      currentDirectoryUUID = directory.parentDirectoryUUID;
+    const dirInfo = parse(absolutePath);
+
+    const dir = new DirectoryEntity();
+    dir.name = dirInfo.name;
+    dir.size = 0;
+    dir.absolutePath = absolutePath;
+    dir.relativePath = dir.absolutePath.replace(absoluteRootPath, "");
+
+    if (dirInfo.dir === absoluteRootPath) {
+      return this.storageManager.saveDirectory(dir);
     }
 
-    return file;
+    const parentDirectory =
+      await this.storageManager.getDirectoryByAbsolutePath(dirInfo.dir);
+
+    if (!parentDirectory)
+      throw new Error(`The parent directory was not found: ${dirInfo.dir}`);
+
+    dir.parentDirectory = parentDirectory;
+    dir.parentDirectoryUUID = parentDirectory.uuid;
+
+    return this.storageManager.saveDirectory(dir);
+  }
+
+  @Process(SyncWorkerProcessEnum.REMOVE_DIR)
+  async removeDir(job: Job<StorageSyncWorkerCtx>): Promise<FileEntity> {
+    const { absolutePath } = job.data;
+
+    const dir = await this.storageManager.getDirectoryByAbsolutePath(
+      absolutePath
+    );
+
+    if (!dir) throw new Error(`The directory was not found: ${absolutePath}`);
+
+    await this.storageManager.deleteDirectoryByUuid(dir.uuid);
+
+    return dir;
   }
 
   @OnJobActive()
@@ -114,13 +150,6 @@ export class StorageSyncWorker {
   @OnJobCompleted()
   onJobCompleted(_job: Job<StorageSyncWorkerCtx>) {
     this.logger.log("The sync is done.", StorageSyncWorker.name);
-  }
-
-  @OnJobCompleted("link")
-  onLinkJobCompleted(_job: Job<StorageSyncWorkerCtx>, result: FileEntity) {
-    this.gateway.sendMessage(StorageGatewayEventsEnum.ON_NEW_ENTITY_DETECTED, {
-      file: result,
-    });
   }
 
   @OnJobFailed()

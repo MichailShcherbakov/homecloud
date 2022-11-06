@@ -1,10 +1,29 @@
-import { IsOptional, IsUUID } from "class-validator";
+import { Type } from "class-transformer";
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from "class-validator";
 
-export class UploadEntitiesDto {
+export class DestinationUpload {
   @IsUUID()
-  targetUUID: string;
+  uuid: string;
+}
 
+export class TargetUpload {
   @IsUUID()
+  uuid: string;
+}
+
+export class UploadDto {
+  @ValidateNested()
+  @Type(() => DestinationUpload)
   @IsOptional()
-  destinationUUID?: string;
+  destination?: DestinationUpload;
+
+  @ValidateNested()
+  @Type(() => TargetUpload)
+  target: TargetUpload;
 }

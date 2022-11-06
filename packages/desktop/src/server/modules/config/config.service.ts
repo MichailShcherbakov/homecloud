@@ -47,11 +47,11 @@ export class ConfigService implements OnModuleInit {
     );
   }
 
-  async getRootPath(): Promise<string> {
+  async getAbsoluteRootPath(): Promise<string> {
     return this.config.rootPath;
   }
 
-  async setRootPath(path: string): Promise<void> {
+  async setAbsoluteRootPath(path: string): Promise<void> {
     this.config.rootPath = path;
 
     await this.sync();

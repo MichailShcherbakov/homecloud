@@ -16,7 +16,7 @@ import { join } from "path";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 import { ConfigService } from "../config/config.service";
-import { UploadEntitiesDto } from "./storage.dto";
+import { UploadDto } from "./storage.dto";
 
 @Controller("/storage")
 export class StorageController {
@@ -69,16 +69,14 @@ export class StorageController {
   )
   async uploadEntity(
     @UploadedFile() file: Express.Multer.File | undefined,
-    @Body() body: UploadEntitiesDto
+    @Body() body: UploadDto
   ): Promise<void> {
-    const { targetUUID, destinationUUID } = body;
+    const { target, destination } = body;
 
     console.log(file, body);
 
-    await this.storageService.uploadEntity({
+    await this.storageService.upload({
       file,
-      targetUUID,
-      destinationUUID,
     });
   }
 

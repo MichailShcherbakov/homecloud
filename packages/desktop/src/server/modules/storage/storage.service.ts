@@ -94,7 +94,7 @@ export class StorageService {
   }
 
   async getGlobaFilePath(uuid: string): Promise<string> {
-    const rootPath = await this.config.getRootPath();
+    const rootPath = await this.config.getAbsoluteRootPath();
     const file = await this.filesRepository.findOneBy({
       uuid,
     });
@@ -145,14 +145,14 @@ export class StorageService {
     });
   }
 
-  async uploadEntity(options: {
+  async upload(options: {
     file?: Express.Multer.File;
     targetUUID: string;
     destinationUUID?: string;
   }): Promise<void> {
     const { file, targetUUID, destinationUUID } = options;
 
-    const absoluteRootPath = await this.config.getRootPath();
+    const absoluteRootPath = await this.config.getAbsoluteRootPath();
 
     const destinationDirectory = destinationUUID
       ? await this.directoriesRepository.findOneBy({

@@ -1,7 +1,7 @@
 import * as fs from "fs/promises";
 import { parse } from "path";
 
-export async function getFileStat(path: string) {
+export async function getFileInfo(path: string) {
   const stat = await fs.lstat(path);
 
   if (!stat.isFile()) return;

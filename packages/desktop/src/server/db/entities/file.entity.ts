@@ -29,7 +29,7 @@ export class FileEntity {
   @Column({ type: "uuid", name: "parent_directory_uuid", nullable: true })
   public parentDirectoryUUID?: string;
 
-  @ManyToOne(() => DirectoryEntity)
+  @ManyToOne(() => DirectoryEntity, { onDelete: "CASCADE" })
   @JoinColumn({
     name: "parent_directory_uuid",
     referencedColumnName: "uuid",
