@@ -6,6 +6,12 @@ import { ConverterModule } from "./converter";
 import { StorageModule } from "./storage";
 import { ConfigModule } from "./config";
 import { QueueModule } from "./queue";
+import { MulterModule } from "@nestjs/platform-express";
+import { ConfigService } from "./config/config.service";
+import { diskStorage } from "multer";
+import { join } from "path";
+import { existsSync, mkdirSync } from "fs";
+import { v4 as uuidv4 } from "uuid";
 
 @Module({
   imports: [

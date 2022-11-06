@@ -4,6 +4,12 @@ import { CircularProgress, Stack, Typography } from "@mui/material";
 import { Entity } from "@/server/modules/file-system/type";
 import { ReactComponent as DirectoryIcon } from "@client/assets/folder.svg";
 import { ReactComponent as FileIcon } from "@client/assets/file.svg";
+import { useEntityDrop } from "@/client/hooks/useEntityDrop";
+import { useDrag } from "@/client/common/hooks/dnd/useDrag";
+import { toJSON } from "@/server/utils/json";
+import { useQueueActions } from "@/client/hooks/queue/useQueueActions";
+import { QueueJobStageEnum } from "@/client/store/reducers/queue.reducer";
+import { useCurrentDirectory } from "@/client/hooks/storage/useCurrentDirectory";
 
 export interface EntityCardProps {
   entity: Entity;
@@ -24,10 +30,50 @@ export const EntityCard: React.FC<EntityCardProps> = React.memo(
     const { classes, cx } = useStyle({
       isLoading,
     });
+
+    const entityRef = React.useRef<HTMLButtonElement | null>(null);
+
+    const { currentDirectory } = useCurrentDirectory();
+
+    const { addQueueJob } = useQueueActions();
+
+    const { dropProps, isDropTarget } = useEntityDrop({
+      dropRef: entityRef,
+      isDisabled: !entity.isDirectory,
+      async onDrop(targets) {
+        targets.forEach(target =>
+          addQueueJob(target, currentDirectory, QueueJobStageEnum.UPLOADING)
+        );
+      },
+    });
+
+    const { dragProps } = useDrag({
+      dragRef: entityRef,
+      getItems() {
+        return [
+          {
+            "application/json": toJSON(
+              {
+                entity,
+              },
+              { compress: true }
+            ),
+          },
+        ];
+      },
+    });
+
     return (
       <Stack
+        {...dropProps}
+        {...dragProps}
+        ref={entityRef}
         component="button"
-        className={cx(classes.root, isActive && classes.rootActive)}
+        className={cx(
+          classes.root,
+          isActive && classes.rootActive,
+          isDropTarget && classes.rootDropActive
+        )}
         onClick={event => !isLoading && onClick?.(entity, event)}
         onDoubleClick={event => !isLoading && onDoubleClick?.(entity, event)}
       >
@@ -76,6 +122,10 @@ const useStyle = makeStyles<{ isLoading: boolean }>()((_, { isLoading }) => ({
         backgroundColor: "#e7eef8",
       },
     }),
+  },
+  rootDropActive: {
+    border: "3px dashed #3772FF",
+    borderRadius: 16,
   },
   rootContainer: {
     width: "100%",

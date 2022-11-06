@@ -8,17 +8,20 @@ import { FileEntity } from "@/server/db/entities/file.entity";
 import { join, parse } from "path";
 import { JobsStorage } from "./storage.queue-jobs";
 import { fromJSON } from "@/server/utils/json";
+import { rename } from "fs/promises";
+import { StorageManager } from "./storage.manager";
 
 @Injectable()
 export class StorageService {
   constructor(
     private readonly logger: Logger,
     private readonly config: ConfigService,
+    private readonly storageManager: StorageManager,
+    private readonly jobStorage: JobsStorage,
     @InjectRepository(DirectoryEntity)
     private readonly directoriesRepository: Repository<DirectoryEntity>,
     @InjectRepository(FileEntity)
-    private readonly filesRepository: Repository<FileEntity>,
-    private readonly jobStorage: JobsStorage
+    private readonly filesRepository: Repository<FileEntity>
   ) {}
 
   async getStatistics(): Promise<Statistics> {
@@ -132,8 +135,52 @@ export class StorageService {
       j => (fromJSON(j.data) as any)?.file?.uuid
     );
 
-    return this.filesRepository.findBy({
-      uuid: In(uploadFilesUuids),
+    return this.filesRepository.find({
+      where: {
+        uuid: In(uploadFilesUuids),
+      },
+      relations: {
+        parentDirectory: true,
+      },
     });
+  }
+
+  async uploadEntity(options: {
+    file?: Express.Multer.File;
+    targetUUID: string;
+    destinationUUID?: string;
+  }): Promise<void> {
+    const { file, targetUUID, destinationUUID } = options;
+
+    const absoluteRootPath = await this.config.getRootPath();
+
+    const destinationDirectory = destinationUUID
+      ? await this.directoriesRepository.findOneBy({
+          uuid: destinationUUID,
+        })
+      : null;
+
+    if (file) {
+      const absolutePath =
+        destinationDirectory?.absolutePath ?? absoluteRootPath;
+
+      await rename(file.path, absolutePath);
+    } else if (targetUUID) {
+      const [targetFile, targetDir] = await Promise.all([
+        this.filesRepository.findOneBy({ uuid: targetUUID }),
+        this.directoriesRepository.findOneBy({ uuid: targetUUID }),
+      ]);
+
+      const target = targetFile ?? targetDir;
+
+      if (!target)
+        throw new NotFoundException(`The target entity was not found`);
+
+      target.parentDirectory = destinationDirectory ?? undefined;
+      target.parentDirectoryUUID = destinationDirectory?.uuid;
+
+      if (targetDir) await this.storageManager.saveDirectory(target);
+      else if (targetFile) await this.storageManager.saveFile(target);
+    }
   }
 }

@@ -5,21 +5,17 @@ import { AppBar } from "@client/components/AppBar";
 import { makeStyles } from "tss-react/mui";
 import { SearchBar } from "@client/components/SearchBar";
 import { HostCard } from "@client/components/cards/HostCard";
-import { useGetDirEntities } from "../hooks/useGetDirEntities";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { CardContainer } from "../components/containers";
-import { UploadingCardContainer } from "../components/containers/UploadingCardContainer";
-import { useGetUploadEntities } from "../hooks/useGetUploadEntities";
+import { QueueJobContainer } from "../components/containers/QueueJobContainer";
+import { useGetDirEntities } from "../hooks/api/useGetDirEntities";
 
 export interface DirPageProps {}
 
 export const DirPage: React.FC<DirPageProps> = () => {
   const { classes } = useStyle();
 
-  const { uuid } = useParams();
-
-  const { entities } = useGetDirEntities(uuid as string);
-  const { entities: uploadEntities } = useGetUploadEntities();
+  useGetDirEntities();
 
   return (
     <Stack direction="column" className={classes.root}>
@@ -31,9 +27,9 @@ export const DirPage: React.FC<DirPageProps> = () => {
         onlyIcon
       />
       <Stack direction="row" className={classes.container}>
-        <CardContainer entities={entities} />
+        <CardContainer />
       </Stack>
-      <UploadingCardContainer entities={uploadEntities} />
+      <QueueJobContainer />
     </Stack>
   );
 };

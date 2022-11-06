@@ -3,7 +3,6 @@ import { FileEntity } from "@/server/db/entities/file.entity";
 import { JobEntity } from "@/server/db/entities/job.entity";
 import { Logger, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { ConfigModule } from "../config/config.module";
 import { QueueModule } from "../queue";
 import { StorageController } from "./storage.controller";
 import { StorageGateway } from "./storage.gateway";
@@ -16,7 +15,6 @@ import { WatcherService } from "./watcher.service";
 @Module({
   imports: [
     TypeOrmModule.forFeature([JobEntity, DirectoryEntity, FileEntity]),
-    ConfigModule,
     QueueModule.registerQueue({
       name: "sync",
       concurrency: 1,

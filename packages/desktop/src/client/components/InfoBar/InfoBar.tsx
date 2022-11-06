@@ -6,7 +6,7 @@ import { ReactComponent as MovieIcon } from "@client/assets/movie_24dp.svg";
 import { ReactComponent as FolderIcon } from "@client/assets/folder_24dp.svg";
 import { ReactComponent as FileIcon } from "@client/assets/file_24dp.svg";
 import { Category } from "./Category";
-import { useGetStatistics } from "@client/hooks/useGetStatistics";
+import { useGetStatistics } from "@/client/hooks/api/useGetStatistics";
 import { compressBitesWithDimension } from "@common/utils/compressBites";
 
 export interface InfoBarProps {}

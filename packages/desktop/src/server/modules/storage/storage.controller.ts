@@ -1,8 +1,22 @@
-import { Controller, Get, Param, ParseUUIDPipe, Res } from "@nestjs/common";
-import { createReadStream } from "fs";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from "@nestjs/common";
+import { createReadStream, existsSync, mkdirSync } from "fs";
 import { StorageService } from "./storage.service";
 import type { Response } from "express";
 import { join } from "path";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { diskStorage } from "multer";
+import { ConfigService } from "../config/config.service";
+import { UploadEntitiesDto } from "./storage.dto";
 
 @Controller("/storage")
 export class StorageController {
@@ -31,6 +45,41 @@ export class StorageController {
   @Get("/upload")
   getUploadEntities() {
     return this.storageService.getUploadEntities();
+  }
+
+  @Post("/upload")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: {
+        fileSize: 5 * 1024 * 1024 * 1024, /// 5 Gb
+      },
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const uploadPath = join(__dirname, "tmp");
+
+          if (!existsSync(uploadPath)) mkdirSync(uploadPath);
+
+          cb(null, uploadPath);
+        },
+        filename: (_req, file, cb) => {
+          cb(null, file.originalname);
+        },
+      }),
+    })
+  )
+  async uploadEntity(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() body: UploadEntitiesDto
+  ): Promise<void> {
+    const { targetUUID, destinationUUID } = body;
+
+    console.log(file, body);
+
+    await this.storageService.uploadEntity({
+      file,
+      targetUUID,
+      destinationUUID,
+    });
   }
 
   @Get("/files/:uuid/:segment")

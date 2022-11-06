@@ -1,5 +1,4 @@
 import React from "react";
-import { Link, useParams } from "react-router-dom";
 import {
   Breadcrumbs as MUIBreadcrumbs,
   IconButton,
@@ -7,29 +6,34 @@ import {
   MenuItem,
   Stack,
 } from "@mui/material";
-import { useGetPathToDir } from "@/client/hooks/useGetPathToDir";
+import { useGetPathToDir } from "@/client/hooks/api/useGetPathToDir";
 import { makeStyles } from "tss-react/mui";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
+import { DirectoryLink } from "./DirectoryLink";
 
 export interface BreadcrumbsProps {}
 
 export const Breadcrumbs: React.FC<BreadcrumbsProps> = () => {
-  const { uuid } = useParams();
-
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const open = Boolean(anchorEl);
 
-  const { classes, cx } = useStyle();
+  const { classes } = useStyle();
 
-  const { dirs } = useGetPathToDir(uuid as string);
+  const { directories } = useGetPathToDir();
 
-  const hiddenDirs = React.useMemo(
-    () => dirs.slice(0, dirs.length - 2),
-    [dirs]
+  const hiddenDirectories = React.useMemo(
+    () => directories.slice(0, directories.length - 2),
+    [directories]
   );
-  const visibleDir = React.useMemo(() => dirs.at(-2), [dirs]);
-  const activeDir = React.useMemo(() => dirs.at(-1), [dirs]);
+  const visibleDirectory = React.useMemo(
+    () => directories.at(-2),
+    [directories]
+  );
+  const activeDirectory = React.useMemo(
+    () => directories.at(-1),
+    [directories]
+  );
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -56,7 +60,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = () => {
         aria-label="breadcrumb"
         className={classes.root}
       >
-        {hiddenDirs.length && (
+        {hiddenDirectories.length && (
           <IconButton
             id="show-hidden-links-button"
             aria-controls={open ? "basic-menu" : undefined}
@@ -68,23 +72,9 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = () => {
             ...
           </IconButton>
         )}
-        {visibleDir && (
-          <Link
-            key={visibleDir.uuid}
-            to={`/dirs/${visibleDir.uuid}`}
-            className={classes.link}
-          >
-            {visibleDir.name}
-          </Link>
-        )}
-        {activeDir && (
-          <Link
-            key={activeDir.uuid}
-            to={`/dirs/${activeDir.uuid}`}
-            className={cx(classes.link, classes.linkActive)}
-          >
-            {activeDir.name}
-          </Link>
+        {visibleDirectory && <DirectoryLink directory={visibleDirectory} />}
+        {activeDirectory && (
+          <DirectoryLink directory={activeDirectory} isActive />
         )}
       </MUIBreadcrumbs>
       <Menu
@@ -96,11 +86,9 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = () => {
           "aria-labelledby": "basic-button",
         }}
       >
-        {hiddenDirs.map(d => (
+        {hiddenDirectories.map(d => (
           <MenuItem key={d.uuid} onClick={handleClose}>
-            <Link to={`/dirs/${d.uuid}`} className={classes.link}>
-              {d.name}
-            </Link>
+            <DirectoryLink directory={d} />
           </MenuItem>
         ))}
       </Menu>
@@ -119,14 +107,5 @@ const useStyle = makeStyles()({
   },
   separator: {
     fill: "#ccc",
-  },
-  link: {
-    color: "#5a6474",
-    fontWeight: 400,
-    fontSize: 16,
-  },
-  linkActive: {
-    color: "#0d2862",
-    fontWeight: 500,
   },
 });

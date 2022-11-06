@@ -1,4 +1,4 @@
-import { INestApplication } from "@nestjs/common";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import * as winston from "winston";
 import {
@@ -38,6 +38,8 @@ export async function createApp<M>(rootModule: M): Promise<IApplication> {
       }),
     }),
   });
+
+  instance.useGlobalPipes(new ValidationPipe());
 
   instance.enableCors({
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",

@@ -48,12 +48,6 @@ export class StorageSyncService implements OnModuleInit, OnModuleDestroy {
       StorageSyncService.name
     );
 
-    const isFileExists = Boolean(
-      await this.storageManager.findOneFileByAbsolutePath(absolutePath)
-    );
-
-    if (isFileExists) return;
-
     this.queue.addJob("link", {
       absolutePath,
     });

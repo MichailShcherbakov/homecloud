@@ -5,18 +5,16 @@ import { makeStyles } from "tss-react/mui";
 import { InfoBar } from "@client/components/InfoBar";
 import { SearchBar } from "@client/components/SearchBar";
 import { HostCard } from "@client/components/cards/HostCard";
-import { useGetRootEntities } from "@client/hooks/useGetRootEntities";
 import { CardContainer } from "../components/containers";
-import { UploadingCardContainer } from "../components/containers/UploadingCardContainer";
-import { useGetUploadEntities } from "../hooks/useGetUploadEntities";
+import { QueueJobContainer } from "../components/containers/QueueJobContainer";
+import { useGetRootEntities } from "../hooks/api/useGetRootEntities";
 
 export interface HomePageProps {}
 
 export const HomePage: React.FC<HomePageProps> = () => {
   const { classes } = useStyle();
 
-  const { entities } = useGetRootEntities();
-  const { entities: uploadEntities } = useGetUploadEntities();
+  useGetRootEntities();
 
   return (
     <Stack direction="column" className={classes.root}>
@@ -26,11 +24,11 @@ export const HomePage: React.FC<HomePageProps> = () => {
         right={<HostCard name="Inner Host" />}
       />
       <Stack direction="row" className={classes.container}>
-        <CardContainer entities={entities} />
+        <CardContainer />
         <Stack direction="column" className={classes.infoBar}>
           <InfoBar />
         </Stack>
-        <UploadingCardContainer entities={uploadEntities} />
+        <QueueJobContainer />
       </Stack>
     </Stack>
   );
