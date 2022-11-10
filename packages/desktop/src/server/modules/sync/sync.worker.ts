@@ -19,6 +19,7 @@ import { toJSON } from "@/server/utils/format";
 import { FileService } from "../storage/file.service";
 import { DirectoryService } from "../storage/directory.service";
 import { computeHash } from "@/server/utils/format/computeFileHash";
+import { MetadataEntity } from "@/server/db/entities/metadata.entity";
 
 export interface ISyncWorkerProcessData {
   kind: string;
@@ -26,8 +27,9 @@ export interface ISyncWorkerProcessData {
 
 export interface SyncWorkerProcessDataFromFS extends ISyncWorkerProcessData {
   kind: "fs";
-  absolutePath: string;
-  oldAbsolutePath?: string;
+  metadata: MetadataEntity;
+  toAbsolutePath: string;
+  fromAbsolutePath?: string;
 }
 
 export interface SyncWorkerProcessDataFromStorage<
@@ -89,18 +91,18 @@ export class SyncWorker {
     }
 
     if (data.kind === "fs") {
-      const { absolutePath } = data;
+      const { toAbsolutePath } = data;
 
       const absoluteRootPath = this.config.getAbsoluteRootPath();
 
-      const fileInfo = await this.fs.getFileInfo(absolutePath);
+      const fileInfo = await this.fs.getFileInfo(toAbsolutePath);
 
       if (!fileInfo)
-        throw new Error(`Failed to get file info: ${absolutePath}`);
+        throw new Error(`Failed to get file info: ${toAbsolutePath}`);
 
       const newFile = new FileEntity();
       newFile.name = fileInfo.name;
-      newFile.hash = await computeFileHash(absolutePath);
+      newFile.hash = await computeFileHash(toAbsolutePath);
       newFile.size = fileInfo.size;
 
       if (fileInfo.absoluteDirectoryPath === absoluteRootPath) {
@@ -145,14 +147,14 @@ export class SyncWorker {
     }
 
     if (data.kind === "fs") {
-      const { absolutePath } = data;
+      const { toAbsolutePath } = data;
 
       const foundFile = await this.fileService.getFileByAbsolutePath(
-        absolutePath
+        toAbsolutePath
       );
 
       if (!foundFile)
-        throw new Error(`The file was not found: ${absolutePath}`);
+        throw new Error(`The file was not found: ${toAbsolutePath}`);
 
       await this.fileService.deleteFileByUuid(foundFile.uuid);
 
@@ -181,14 +183,14 @@ export class SyncWorker {
     }
 
     if (data.kind === "fs") {
-      const { absolutePath } = data;
+      const { toAbsolutePath } = data;
 
       const absoluteRootPath = this.config.getAbsoluteRootPath();
 
-      const directoryInfo = await this.fs.getDirectoryInfo(absolutePath);
+      const directoryInfo = await this.fs.getDirectoryInfo(toAbsolutePath);
 
       if (!directoryInfo)
-        throw new Error(`Failed to get directory info: ${absolutePath}`);
+        throw new Error(`Failed to get directory info: ${toAbsolutePath}`);
 
       const newDirectory = new DirectoryEntity();
       newDirectory.name = directoryInfo.name;
@@ -242,21 +244,18 @@ export class SyncWorker {
     }
 
     if (data.kind === "fs") {
-      const { absolutePath, oldAbsolutePath } = data;
+      const { metadata } = data;
 
-      if (!oldAbsolutePath)
-        throw new Error(`The old absolute path is undefined`);
-
-      const directory = await this.directoryService.getDirectoryByAbsolutePath(
-        absolutePath
+      const directory = await this.directoryService.getDirectoryByMetadata(
+        metadata
       );
 
       if (!directory)
-        throw new Error(`The directory was not found: ${absolutePath}`);
+        throw new Error(`The directory was not found: ${toJSON(metadata)}`);
 
       return this.directoryService.renameDirectory(
         directory,
-        basename(oldAbsolutePath)
+        basename(metadata.path)
       );
     }
 
@@ -285,25 +284,40 @@ export class SyncWorker {
     }
 
     if (data.kind === "fs") {
-      const { absolutePath, oldAbsolutePath } = data;
+      const { toAbsolutePath, metadata } = data;
 
-      if (!oldAbsolutePath)
-        throw new Error(`The old absolute path is undefined`);
+      const absoluteRootPath = this.config.getAbsoluteRootPath();
 
       const [directory, directoryInfo] = await Promise.all([
-        this.directoryService.getDirectoryByAbsolutePath(absolutePath),
-        this.fs.getDirectoryInfo(absolutePath),
+        this.directoryService.getDirectoryByMetadata(metadata),
+        this.fs.getDirectoryInfo(toAbsolutePath),
       ]);
 
       if (!directory)
-        throw new Error(`The directory was not found: ${absolutePath}`);
+        throw new Error(`The directory was not found: ${toAbsolutePath}`);
 
       if (!directoryInfo)
-        throw new Error(`Failed to get directory info: ${absolutePath}`);
+        throw new Error(`Failed to get directory info: ${toAbsolutePath}`);
 
-      const destDirectory =
-        await this.directoryService.getDirectoryByAbsolutePath(
-          directoryInfo.absoluteDirectoryPath
+      if (directoryInfo.absoluteDirectoryPath === absoluteRootPath) {
+        return this.directoryService.moveDirectory(directory);
+      }
+      const destDirectoryMetadata = await this.fs.getMetadataByPath(
+        directoryInfo.absoluteDirectoryPath
+      );
+
+      if (!destDirectoryMetadata)
+        throw new Error(
+          `The dest directory metadata was not found: ${directoryInfo.absoluteDirectoryPath}`
+        );
+
+      const destDirectory = await this.directoryService.getDirectoryByMetadata(
+        destDirectoryMetadata
+      );
+
+      if (!destDirectory)
+        throw new Error(
+          `The dest directory was not found: ${toJSON(destDirectoryMetadata)}`
         );
 
       return this.directoryService.moveDirectory(directory, destDirectory);
@@ -315,7 +329,7 @@ export class SyncWorker {
   @Process(SyncWorkerProcessEnum.REMOVE_DIR)
   async removeDir(
     job: Job<SyncWorkerProcessData<DirectoryEntity>>
-  ): Promise<DirectoryEntity> {
+  ): Promise<DirectoryEntity | null> {
     const { data } = job;
 
     if (data.kind === "storage") {
@@ -334,13 +348,15 @@ export class SyncWorker {
     }
 
     if (data.kind === "fs") {
-      const { absolutePath } = data;
+      const { metadata } = data;
 
-      const foundDirectory =
-        await this.directoryService.getDirectoryByAbsolutePath(absolutePath);
+      const foundDirectory = await this.directoryService.getDirectoryByMetadata(
+        metadata
+      );
 
-      if (!foundDirectory)
-        throw new Error(`The directory was not found: ${absolutePath}`);
+      // In the file system, root directory delete firstly, and then it's descendants,
+      // so it's normal that some directory will not to be found
+      if (!foundDirectory) return null;
 
       await this.directoryService.deleteDirectoryByUuid(foundDirectory.uuid);
 

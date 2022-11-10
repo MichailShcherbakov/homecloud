@@ -7,27 +7,28 @@ export class FileEntity extends IEntity {
   @Column()
   name: string;
 
-  @Column({ type: "varchar" })
-  private _size: string;
+  @Column()
+  size: number;
 
   @Column({ type: "varchar" })
   hash: string;
 
-  @Column({ type: "uuid", name: "directory_uuid", nullable: true })
+  @Column({
+    type: "uuid",
+    name: "directoryUuid",
+    nullable: true,
+    default: null,
+  })
   directoryUuid?: string;
 
   @ManyToOne(() => DirectoryEntity, { onDelete: "CASCADE" })
   @JoinColumn({
-    name: "directory_uuid",
+    name: "directoryUuid",
     referencedColumnName: "uuid",
   })
   directory?: DirectoryEntity;
 
-  get size(): bigint {
-    return BigInt(this._size);
-  }
-
-  set size(val: bigint) {
-    this._size = val.toString();
+  clone(): FileEntity {
+    return Object.assign(new DirectoryEntity(), this);
   }
 }

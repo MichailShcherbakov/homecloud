@@ -7,6 +7,7 @@ import * as fs from "fs/promises";
 import { computeHash } from "@/server/utils/format/computeFileHash";
 import { FileEntity } from "@/server/db/entities/file.entity";
 import { join } from "path";
+import { MetadataEntity } from "@/server/db/entities/metadata.entity";
 
 /**
  * @private
@@ -59,6 +60,23 @@ export class DirectoryService {
     });
   }
 
+  /**
+   *  Returns directory of a certain metadata.
+   *  @param metadata
+   *  @returns directory or null
+   */
+  public getDirectoryByMetadata(
+    metadata: MetadataEntity
+  ): Promise<DirectoryEntity | null> {
+    const hash = computeHash(metadata.ino);
+    return this.getDirectoryByHash(hash);
+  }
+
+  /**
+   *
+   * @param absolutePath
+   * @returns
+   */
   public async getDirectoryHashByAbsolutePath(
     absolutePath: string
   ): Promise<string> {
@@ -130,10 +148,10 @@ export class DirectoryService {
     directory: DirectoryEntity,
     destDirectory: DirectoryEntity | null = null
   ) {
-    const cloneDirectory = directory.clone();
-    cloneDirectory.parent = destDirectory;
+    const directoryClone = directory.clone();
+    directoryClone.parent = destDirectory;
 
-    const newDirectory = await this.saveDirectory(cloneDirectory);
+    const newDirectory = await this.saveDirectory(directoryClone);
 
     /** TODO: Check name exists */
 
@@ -147,10 +165,10 @@ export class DirectoryService {
    * @returns
    */
   public async renameDirectory(directory: DirectoryEntity, name: string) {
-    const updatedDirectory = await this.saveDirectory({
-      ...directory,
-      name,
-    });
+    const directoryClone = directory.clone();
+    directoryClone.name = name;
+
+    const updatedDirectory = await this.saveDirectory(directoryClone);
 
     /** TODO: Check name exists */
 
@@ -168,10 +186,10 @@ export class DirectoryService {
   ) {
     await this.updateEntitySize(directory, "decrease");
 
-    const updatedDirectory = await this.saveDirectory({
-      ...directory,
-      parent: destDirectory,
-    });
+    const directoryClone = directory.clone();
+    directoryClone.parent = destDirectory;
+
+    const updatedDirectory = await this.saveDirectory(directoryClone);
 
     /** TODO: Check name exists */
 
@@ -205,14 +223,14 @@ export class DirectoryService {
    * @param kind
    * @returns
    */
-  public async updateEntitySize(
-    entity: FileEntity | DirectoryEntity,
+  public async updateEntitySize<TEntity extends FileEntity | DirectoryEntity>(
+    entity: TEntity,
     kind: "increase" | "decrease"
   ) {
     let directory: DirectoryEntity | null = null;
 
     if (entity instanceof FileEntity) {
-      /** in the root  */
+      /* in the root  */
       if (!entity.directoryUuid) return;
 
       directory = await this.getDirectoryByUuid(entity.directoryUuid);
@@ -220,7 +238,7 @@ export class DirectoryService {
       if (!directory)
         throw new Error(`The directory was not found: ${entity.directoryUuid}`);
     } else if (entity instanceof DirectoryEntity) {
-      /** in the root  */
+      /* in the root  */
       if (!entity.parent) return;
 
       directory = entity;

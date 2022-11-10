@@ -130,15 +130,12 @@ export class FileService {
    * @param file
    * @returns
    */
-  public async createFile(
-    file: FileEntity,
-    destDirectory: DirectoryEntity | null = null
-  ) {
-    const newFile = await this.saveFile({
-      ...file,
-      directory: destDirectory ?? undefined,
-      directoryUuid: destDirectory?.uuid,
-    });
+  public async createFile(file: FileEntity, destDirectory?: DirectoryEntity) {
+    const fileClone = file.clone();
+    fileClone.directory = destDirectory;
+    fileClone.directoryUuid = destDirectory?.uuid;
+
+    const newFile = await this.saveFile(fileClone);
 
     await this.directoryService.updateEntitySize(newFile, "increase");
 
@@ -153,7 +150,10 @@ export class FileService {
    * @returns
    */
   public async renameFile(file: FileEntity, name: string) {
-    const updatedFile = await this.saveFile({ ...file, name });
+    const fileClone = file.clone();
+    fileClone.name = name;
+
+    const updatedFile = await this.saveFile(fileClone);
 
     /** TODO: Check name exists */
 
@@ -165,17 +165,14 @@ export class FileService {
    * @param destDirectory
    * @returns
    */
-  public async moveFile(
-    file: FileEntity,
-    destDirectory: DirectoryEntity | null = null
-  ) {
+  public async moveFile(file: FileEntity, destDirectory?: DirectoryEntity) {
     await this.directoryService.updateEntitySize(file, "decrease");
 
-    const updatedFile = await this.saveFile({
-      ...file,
-      directory: destDirectory ?? undefined,
-      directoryUuid: destDirectory?.uuid,
-    });
+    const fileClone = file.clone();
+    fileClone.directory = destDirectory;
+    fileClone.directoryUuid = destDirectory?.uuid;
+
+    const updatedFile = await this.saveFile(fileClone);
 
     /** TODO: Check name exists */
 

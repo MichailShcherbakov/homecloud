@@ -1,7 +1,7 @@
 export interface IEntityInfo {
-  ino: bigint;
+  ino: string;
   name: string;
-  size: bigint;
+  size: number;
   absoluteDirectoryPath: string;
 }
 

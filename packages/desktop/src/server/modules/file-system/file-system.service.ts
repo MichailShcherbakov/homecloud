@@ -5,7 +5,7 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import { ConfigService } from "../config/config.service";
-import { WatcherEventEnum, WatcherService } from "./watcher";
+import { MetadataService, WatcherEventEnum, WatcherService } from "./watcher";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { FileSystemEventEnum } from "./file-system.events";
 import { mv } from "@/server/utils/fs/mv";
@@ -22,6 +22,7 @@ export class FileSystemService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly config: ConfigService,
     private readonly logger: Logger,
+    private readonly metadata: MetadataService,
     private readonly watcherService: WatcherService,
     private readonly emitter: EventEmitter2
   ) {}
@@ -349,10 +350,10 @@ export class FileSystemService implements OnModuleInit, OnModuleDestroy {
     const { ext, name, dir } = parse(absolutePath);
 
     return {
-      ino: stat.ino,
+      ino: stat.ino.toString(),
       name,
       ext,
-      size: stat.size,
+      size: Number(stat.size),
       absoluteDirectoryPath: dir,
     };
   }
@@ -369,10 +370,16 @@ export class FileSystemService implements OnModuleInit, OnModuleDestroy {
     const name = basename(absolutePath);
 
     return {
-      ino: stat.ino,
+      ino: stat.ino.toString(),
       name,
-      size: stat.size,
+      size: Number(stat.size),
       absoluteDirectoryPath: dir,
     };
+  }
+
+  public getMetadataByPath(
+    absolutePath: string
+  ): Promise<MetadataEntity | null> {
+    return this.metadata.get(absolutePath);
   }
 }

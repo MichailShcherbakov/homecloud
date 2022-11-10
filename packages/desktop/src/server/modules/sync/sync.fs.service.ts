@@ -1,6 +1,13 @@
+import { MetadataEntity } from "@/server/db/entities/metadata.entity";
+import { computeHash } from "@/server/utils/format/computeFileHash";
 import { Injectable } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
-import { FileSystemEventEnum } from "../file-system";
+import { ConfigService } from "../config/config.service";
+import {
+  FileSystemEventEnum,
+  FileSystemService,
+  MetadataService,
+} from "../file-system";
 import { InjectQueue, Queue } from "../queue";
 import { DirectoryService } from "../storage/directory.service";
 import { SyncWorkerProcessEnum, SYNC_QUEUE_NAME } from "./sync.constans";
@@ -9,117 +16,174 @@ import { SyncWorkerProcessData } from "./sync.worker";
 @Injectable()
 export class SyncFileSystemService {
   constructor(
+    private readonly config: ConfigService,
     private readonly directoryService: DirectoryService,
+    private readonly fs: FileSystemService,
     @InjectQueue(SYNC_QUEUE_NAME) private readonly queue: Queue
   ) {}
 
   @OnEvent(FileSystemEventEnum.ON_FILE_ADDED)
-  async onFileAdded(absolutePath: string): Promise<void> {
+  async onFileAdded(
+    toAbsolutePath: string,
+    metadata: MetadataEntity
+  ): Promise<void> {
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.ADD_FILE, {
       kind: "fs",
-      absolutePath,
+      toAbsolutePath,
+      metadata,
     });
   }
 
   @OnEvent(FileSystemEventEnum.ON_FILE_RENAMED)
   async onFileRenamed(
-    newAbsolutePath: string,
-    oldAbsolutePath: string
+    toAbsolutePath: string,
+    fromAbsolutePath: string,
+    metadata: MetadataEntity
   ): Promise<void> {
     this.queue.addJob<SyncWorkerProcessData>(
       SyncWorkerProcessEnum.RENAME_FILE,
       {
         kind: "fs",
-        absolutePath: newAbsolutePath,
-        oldAbsolutePath: oldAbsolutePath,
+        toAbsolutePath,
+        fromAbsolutePath,
+        metadata,
       }
     );
   }
 
   @OnEvent(FileSystemEventEnum.ON_FILE_MOVED)
   async onFileMoved(
-    newAbsolutePath: string,
-    oldAbsolutePath: string
+    toAbsolutePath: string,
+    fromAbsolutePath: string,
+    metadata: MetadataEntity
   ): Promise<void> {
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.MOVE_FILE, {
       kind: "fs",
-      absolutePath: newAbsolutePath,
-      oldAbsolutePath: oldAbsolutePath,
+      toAbsolutePath,
+      fromAbsolutePath,
+      metadata,
     });
   }
 
   @OnEvent(FileSystemEventEnum.ON_FILE_REMOVED)
-  async onFileRemoved(absolutePath: string) {
+  async onFileRemoved(toAbsolutePath: string, metadata: MetadataEntity) {
     this.queue.addJob<SyncWorkerProcessData>(
       SyncWorkerProcessEnum.REMOVE_FILE,
       {
         kind: "fs",
-        absolutePath,
+        toAbsolutePath,
+        metadata,
       }
     );
   }
 
   @OnEvent(FileSystemEventEnum.ON_DIR_ADDED)
-  async onDirAdded(absolutePath: string): Promise<void> {
-    const foundDirectory =
-      await this.directoryService.getDirectoryByAbsolutePath(absolutePath);
+  async onDirAdded(
+    toAbsolutePath: string,
+    metadata: MetadataEntity
+  ): Promise<void> {
+    const foundDirectory = await this.directoryService.getDirectoryByMetadata(
+      metadata
+    );
 
+    /* skip */
     if (foundDirectory) return;
 
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.ADD_DIR, {
       kind: "fs",
-      absolutePath,
+      toAbsolutePath,
+      metadata,
     });
   }
 
   @OnEvent(FileSystemEventEnum.ON_DIR_RENAMED)
   async onNameRenamed(
-    newAbsolutePath: string,
-    oldAbsolutePath: string
+    toAbsolutePath: string,
+    fromAbsolutePath: string,
+    metadata: MetadataEntity
   ): Promise<void> {
-    const hash = await this.directoryService.getDirectoryHashByAbsolutePath(
-      newAbsolutePath
-    );
-    const directory = await this.directoryService.getDirectoryByHash(hash);
+    const [directory, directoryInfo] = await Promise.all([
+      this.directoryService.getDirectoryByMetadata(metadata),
+      this.fs.getDirectoryInfo(toAbsolutePath),
+    ]);
 
-    if (directory) return;
+    /* skip */
+    if (directory && directoryInfo && directory.name === directoryInfo.name)
+      return;
 
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.RENAME_DIR, {
       kind: "fs",
-      absolutePath: newAbsolutePath,
-      oldAbsolutePath: oldAbsolutePath,
+      toAbsolutePath,
+      fromAbsolutePath,
+      metadata,
     });
   }
 
   @OnEvent(FileSystemEventEnum.ON_DIR_MOVED)
   async onDirMoved(
-    newAbsolutePath: string,
-    oldAbsolutePath: string
+    toAbsolutePath: string,
+    fromAbsolutePath: string,
+    metadata: MetadataEntity
   ): Promise<void> {
-    const hash = await this.directoryService.getDirectoryHashByAbsolutePath(
-      newAbsolutePath
-    );
-    const directory = await this.directoryService.getDirectoryByHash(hash);
+    const absoluteRootPath = this.config.getAbsoluteRootPath();
 
-    if (directory) return;
+    const directoryInfo = await this.fs.getDirectoryInfo(toAbsolutePath);
+
+    if (!directoryInfo)
+      throw new Error(`The directory info was not found: ${toAbsolutePath}`);
+
+    if (directoryInfo.absoluteDirectoryPath === absoluteRootPath) {
+      const directory = await this.directoryService.getDirectoryByMetadata(
+        metadata
+      );
+
+      /* skip */
+      if (directory && !directory.parentUuid) return;
+    } else {
+      const destDirMetadata = await this.fs.getMetadataByPath(
+        directoryInfo.absoluteDirectoryPath
+      );
+
+      if (!destDirMetadata)
+        throw new Error(
+          `The dest directory info was not found: ${directoryInfo.absoluteDirectoryPath}`
+        );
+
+      const [directory, destDirectory] = await Promise.all([
+        this.directoryService.getDirectoryByMetadata(metadata),
+        this.directoryService.getDirectoryByMetadata(destDirMetadata),
+      ]);
+
+      /* skip */
+      if (
+        directory &&
+        destDirectory &&
+        directory.parentUuid === destDirectory.uuid
+      )
+        return;
+    }
 
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.MOVE_DIR, {
       kind: "fs",
-      absolutePath: newAbsolutePath,
-      oldAbsolutePath: oldAbsolutePath,
+      toAbsolutePath,
+      fromAbsolutePath,
+      metadata,
     });
   }
 
   @OnEvent(FileSystemEventEnum.ON_DIR_REMOVED)
-  async onDirRemoved(absolutePath: string) {
-    const foundDirectory =
-      await this.directoryService.getDirectoryByAbsolutePath(absolutePath);
+  async onDirRemoved(toAbsolutePath: string, metadata: MetadataEntity) {
+    const foundDirectory = await this.directoryService.getDirectoryByMetadata(
+      metadata
+    );
 
+    /* skip */
     if (!foundDirectory) return;
 
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.REMOVE_DIR, {
       kind: "fs",
-      absolutePath,
+      toAbsolutePath,
+      metadata,
     });
   }
 }
