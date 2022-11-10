@@ -15,6 +15,7 @@ import { hide } from "hidefile";
 import { BigIntStats } from "fs";
 import { DirectoryInfo, FileInfo } from "@/server/utils/getFileInfo";
 import { parse, basename } from "path";
+import { MetadataEntity } from "@/server/db/entities/metadata.entity";
 
 @Injectable()
 export class FileSystemService implements OnModuleInit, OnModuleDestroy {
@@ -135,104 +136,140 @@ export class FileSystemService implements OnModuleInit, OnModuleDestroy {
     await this.watcherService.unwatch(absoluteRootPath);
   }
 
-  private onFileAdded = (absolutePath: string): void => {
+  private onFileAdded = (
+    toAbsolutePath: string,
+    metadata: MetadataEntity
+  ): void => {
     this.logger.log(
-      `The file was detected: ${absolutePath}`,
+      `The file was detected: ${toAbsolutePath}`,
       FileSystemService.name
     );
 
-    this.emitter.emit(FileSystemEventEnum.ON_FILE_ADDED, absolutePath);
+    this.emitter.emit(
+      FileSystemEventEnum.ON_FILE_ADDED,
+      toAbsolutePath,
+      metadata
+    );
   };
 
   private onFileMoved = (
-    newAbsolutePath: string,
-    oldAbsolutePath: string
+    toAbsolutePath: string,
+    fromAbsolutePath: string,
+    metadata: MetadataEntity
   ): void => {
     this.logger.log(
-      `The file was moved:\n - from: ${oldAbsolutePath}\n - to: ${newAbsolutePath}`,
+      `The file was moved:\n - from: ${fromAbsolutePath}\n - to: ${toAbsolutePath}`,
       FileSystemService.name
     );
 
     this.emitter.emit(
       FileSystemEventEnum.ON_FILE_MOVED,
-      newAbsolutePath,
-      oldAbsolutePath
+      toAbsolutePath,
+      fromAbsolutePath,
+      metadata
     );
   };
 
   private onFileRenamed = (
-    newAbsolutePath: string,
-    oldAbsolutePath: string
+    toAbsolutePath: string,
+    fromAbsolutePath: string,
+    metadata: MetadataEntity
   ): void => {
     this.logger.log(
-      `The file was renamed:\n - new: ${newAbsolutePath}\n - old: ${oldAbsolutePath}`,
+      `The file was renamed:\n - new: ${toAbsolutePath}\n - old: ${fromAbsolutePath}`,
       FileSystemService.name
     );
 
     this.emitter.emit(
       FileSystemEventEnum.ON_FILE_RENAMED,
-      newAbsolutePath,
-      oldAbsolutePath
+      toAbsolutePath,
+      fromAbsolutePath,
+      metadata
     );
   };
 
-  private onFileRemoved = (absolutePath: string): void => {
+  private onFileRemoved = (
+    toAbsolutePath: string,
+    metadata: MetadataEntity
+  ): void => {
     this.logger.log(
-      `The file was removed: ${absolutePath}`,
+      `The file was removed: ${toAbsolutePath}`,
       FileSystemService.name
     );
 
-    this.emitter.emit(FileSystemEventEnum.ON_FILE_REMOVED, absolutePath);
+    this.emitter.emit(
+      FileSystemEventEnum.ON_FILE_REMOVED,
+      toAbsolutePath,
+      metadata
+    );
   };
 
-  private onDirAdded = (absolutePath: string): void => {
+  private onDirAdded = (
+    toAbsolutePath: string,
+    metadata: MetadataEntity
+  ): void => {
     this.logger.log(
-      `The directory was detected: ${absolutePath}`,
+      `The directory was detected: ${toAbsolutePath}`,
       FileSystemService.name
     );
 
-    this.emitter.emit(FileSystemEventEnum.ON_DIR_ADDED, absolutePath);
+    this.emitter.emit(
+      FileSystemEventEnum.ON_DIR_ADDED,
+      toAbsolutePath,
+      metadata
+    );
   };
 
   private onDirMoved = (
-    newAbsolutePath: string,
-    oldAbsolutePath: string
+    toAbsolutePath: string,
+    fromAbsolutePath: string,
+    metadata: MetadataEntity
   ): void => {
     this.logger.log(
-      `The directory was moved:\n - from: ${oldAbsolutePath}\n - to: ${newAbsolutePath}`,
+      `The directory was moved:\n - from: ${fromAbsolutePath}\n - to: ${toAbsolutePath}`,
       FileSystemService.name
     );
 
     this.emitter.emit(
       FileSystemEventEnum.ON_DIR_MOVED,
-      newAbsolutePath,
-      oldAbsolutePath
+      toAbsolutePath,
+      fromAbsolutePath,
+      metadata
     );
   };
 
   private onDirRenamed = (
-    newAbsolutePath: string,
-    oldAbsolutePath: string
+    toAbsolutePath: string,
+    fromAbsolutePath: string,
+    metadata: MetadataEntity
   ): void => {
     this.logger.log(
-      `The directory was renamed:\n - new: ${newAbsolutePath}\n - old: ${oldAbsolutePath}`,
+      `The directory was renamed:\n - new: ${toAbsolutePath}\n - old: ${fromAbsolutePath}`,
       FileSystemService.name
     );
 
     this.emitter.emit(
       FileSystemEventEnum.ON_DIR_RENAMED,
-      newAbsolutePath,
-      oldAbsolutePath
+      toAbsolutePath,
+      fromAbsolutePath,
+      metadata
     );
   };
 
-  private onDirRemoved = (absolutePath: string): void => {
+  private onDirRemoved = (
+    toAbsolutePath: string,
+    metadata: MetadataEntity
+  ): void => {
     this.logger.log(
-      `The directory was removed: ${absolutePath}`,
+      `The directory was removed: ${toAbsolutePath}`,
       FileSystemService.name
     );
 
-    this.emitter.emit(FileSystemEventEnum.ON_DIR_REMOVED, absolutePath);
+    this.emitter.emit(
+      FileSystemEventEnum.ON_DIR_REMOVED,
+      toAbsolutePath,
+      metadata
+    );
   };
 
   public async mv(fromPath: string, toPath: string): Promise<void> {

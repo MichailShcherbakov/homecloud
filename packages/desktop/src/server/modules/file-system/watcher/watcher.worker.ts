@@ -3,7 +3,7 @@ import watcher from "@parcel/watcher";
 import { ConfigService } from "../../config/config.service";
 import { Job, OnJobFailed, Process, Processor } from "../../queue";
 import { MetadataService } from "./metadata.service";
-import { WATCHER_QUEUE_NAME } from "./watcher.constants";
+import { MOVE_EVENT_DELAY, WATCHER_QUEUE_NAME } from "./watcher.constants";
 import { WatcherEventEnum } from "./watcher.events";
 import { WatcherInstance } from "./watcher.instance";
 import { basename } from "path";
@@ -128,50 +128,58 @@ export class WatcherWorker {
 
     for (const action of actions) {
       if (action.kind === "create") {
-        const newPath = action.toPath;
+        const toPath = action.toPath;
 
-        const metadata = await this.metadataService.set(newPath);
+        const metadata = await this.metadataService.set(toPath);
 
         const moveSignal = this.moveSignals.get(metadata.ino);
 
         if (moveSignal) {
-          const toPath = newPath;
           const fromPath = moveSignal();
 
-          await this.metadataService.update(fromPath, toPath);
+          const updatedMetadata = await this.metadataService.update(
+            fromPath,
+            toPath
+          );
 
           if (!shouldEmitEvents) return;
 
           if (metadata.isFile) {
-            watcher.signal(WatcherEventEnum.ON_FILE_MOVED, toPath, fromPath);
+            watcher.signal(
+              WatcherEventEnum.ON_FILE_MOVED,
+              toPath,
+              fromPath,
+              updatedMetadata
+            );
           }
 
           if (metadata.isDirectory) {
-            watcher.signal(WatcherEventEnum.ON_DIR_MOVED, toPath, fromPath);
+            watcher.signal(
+              WatcherEventEnum.ON_DIR_MOVED,
+              toPath,
+              fromPath,
+              updatedMetadata
+            );
           }
 
           return;
         }
 
         const timeoutId = setTimeout(async () => {
-          const toPath = newPath;
-
           this.moveSignals.delete(metadata.ino);
 
           if (!shouldEmitEvents) return;
 
           if (metadata.isFile) {
-            watcher.signal(WatcherEventEnum.ON_FILE_ADDED, toPath);
+            watcher.signal(WatcherEventEnum.ON_FILE_ADDED, toPath, metadata);
           }
 
           if (metadata.isDirectory) {
-            watcher.signal(WatcherEventEnum.ON_DIR_ADDED, toPath);
+            watcher.signal(WatcherEventEnum.ON_DIR_ADDED, toPath, metadata);
           }
-        }, 150);
+        }, MOVE_EVENT_DELAY);
 
         this.moveSignals.set(metadata.ino, () => {
-          const toPath = newPath;
-
           clearTimeout(timeoutId);
 
           this.moveSignals.delete(metadata.ino);
@@ -179,55 +187,71 @@ export class WatcherWorker {
           return toPath;
         });
       } else if (action.kind === "delete") {
-        const oldPath = action.fromPath;
+        const fromPath = action.fromPath;
 
-        const metadata = await this.metadataService.get(oldPath);
+        const metadata = await this.metadataService.get(fromPath);
 
         if (!metadata)
-          throw new Error(`The metadata was not found: ${oldPath}`);
+          throw new Error(`The metadata was not found: ${fromPath}`);
 
         const moveSignal = this.moveSignals.get(metadata.ino);
 
         if (moveSignal) {
-          const fromPath = oldPath;
           const toPath = moveSignal();
 
-          await this.metadataService.update(fromPath, toPath);
+          const updatedMetadata = await this.metadataService.update(
+            fromPath,
+            toPath
+          );
 
           if (!shouldEmitEvents) return;
 
           if (metadata.isFile) {
-            watcher.signal(WatcherEventEnum.ON_FILE_MOVED, toPath, fromPath);
+            watcher.signal(
+              WatcherEventEnum.ON_FILE_MOVED,
+              toPath,
+              fromPath,
+              updatedMetadata
+            );
           }
 
           if (metadata.isDirectory) {
-            watcher.signal(WatcherEventEnum.ON_DIR_MOVED, toPath, fromPath);
+            watcher.signal(
+              WatcherEventEnum.ON_DIR_MOVED,
+              toPath,
+              fromPath,
+              updatedMetadata
+            );
           }
 
           return;
         }
 
         const timeoutId = setTimeout(async () => {
-          const fromPath = oldPath;
-
           this.moveSignals.delete(metadata.ino);
 
-          await this.metadataService.delete(fromPath);
+          const deletedMetadata = await this.metadataService.delete(fromPath);
 
           if (!shouldEmitEvents) return;
 
           if (metadata.isFile) {
-            watcher.signal(WatcherEventEnum.ON_FILE_REMOVED, fromPath);
+            watcher.signal(
+              WatcherEventEnum.ON_FILE_REMOVED,
+              fromPath,
+              deletedMetadata
+            );
           }
 
           if (metadata.isDirectory) {
-            watcher.signal(WatcherEventEnum.ON_DIR_REMOVED, fromPath);
+            watcher.signal(
+              WatcherEventEnum.ON_DIR_REMOVED,
+              fromPath,
+              deletedMetadata
+            );
           }
-        }, 150);
+        }, MOVE_EVENT_DELAY);
 
         this.moveSignals.set(metadata.ino, () => {
-          const fromPath = oldPath;
-
           clearTimeout(timeoutId);
 
           this.moveSignals.delete(metadata.ino);
@@ -240,7 +264,10 @@ export class WatcherWorker {
         if (!metadata)
           throw new Error(`The metadata was not found: ${action.fromPath}`);
 
-        await this.metadataService.update(action.fromPath, action.toPath);
+        const updatedMetadata = await this.metadataService.update(
+          action.fromPath,
+          action.toPath
+        );
 
         if (!shouldEmitEvents) return;
 
@@ -249,7 +276,8 @@ export class WatcherWorker {
             watcher.signal(
               WatcherEventEnum.ON_FILE_MOVED,
               action.toPath,
-              action.fromPath
+              action.fromPath,
+              updatedMetadata
             );
           }
 
@@ -257,7 +285,8 @@ export class WatcherWorker {
             watcher.signal(
               WatcherEventEnum.ON_DIR_MOVED,
               action.toPath,
-              action.fromPath
+              action.fromPath,
+              updatedMetadata
             );
           }
         } else {
@@ -265,7 +294,8 @@ export class WatcherWorker {
             watcher.signal(
               WatcherEventEnum.ON_FILE_RENAMED,
               action.toPath,
-              action.fromPath
+              action.fromPath,
+              updatedMetadata
             );
           }
 
@@ -273,7 +303,8 @@ export class WatcherWorker {
             watcher.signal(
               WatcherEventEnum.ON_DIR_RENAMED,
               action.toPath,
-              action.fromPath
+              action.fromPath,
+              updatedMetadata
             );
           }
         }

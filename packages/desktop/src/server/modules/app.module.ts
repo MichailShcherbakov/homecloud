@@ -28,7 +28,7 @@ import { GatewayModule } from "./gateway/gateway.module";
     ConfigModule,
     StorageModule,
     FileSystemModule,
-    // SyncModule,
+    SyncModule,
     // ConverterModule,
     // GatewayModule,
   ],
