@@ -3,40 +3,22 @@ import { FileEntity } from "@/server/db/entities/file.entity";
 import { JobEntity } from "@/server/db/entities/job.entity";
 import { Logger, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { QueueModule } from "../queue";
+import { DirectoryService } from "./directory.service";
+import { FileService } from "./file.service";
 import { StorageController } from "./storage.controller";
-import { StorageGateway } from "./storage.gateway";
 import { StorageManager } from "./storage.manager";
 import { StorageService } from "./storage.service";
-import { StorageSyncService } from "./storage.sync.service";
-import { StorageSyncWorker } from "./storage.sync.worker";
-import { WatcherService } from "./watcher.service";
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([JobEntity, DirectoryEntity, FileEntity]),
-    QueueModule.registerQueue({
-      name: "sync",
-      concurrency: 1,
-    }),
-  ],
+  imports: [TypeOrmModule.forFeature([JobEntity, DirectoryEntity, FileEntity])],
   controllers: [StorageController],
   providers: [
     Logger,
+    DirectoryService,
+    FileService,
     StorageService,
-    StorageSyncService,
-    StorageSyncWorker,
     StorageManager,
-    StorageGateway,
-    WatcherService,
   ],
-  exports: [
-    StorageService,
-    StorageSyncService,
-    StorageSyncWorker,
-    StorageManager,
-    StorageGateway,
-    WatcherService,
-  ],
+  exports: [DirectoryService, FileService, StorageService, StorageManager],
 })
 export class StorageModule {}

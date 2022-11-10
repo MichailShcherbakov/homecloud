@@ -1,4 +1,4 @@
-import { fromJSON } from "@/server/utils/json";
+import { fromJSON } from "@/server/utils/format/json";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { DiscoveryService, MetadataScanner, ModuleRef } from "@nestjs/core";
 import { InstanceWrapper } from "@nestjs/core/injector/instance-wrapper";

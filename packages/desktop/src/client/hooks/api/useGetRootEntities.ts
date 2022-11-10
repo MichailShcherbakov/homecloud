@@ -1,9 +1,9 @@
 import axios from "axios";
-import { StorageGatewayEventsEnum } from "@/server/modules/storage/storage.events";
 import { Entity, File } from "@server/modules/file-system/type";
 import { useQuery, useQueryClient } from "react-query";
 import { useSubscribe } from "../../common/SubscriptionsContext";
 import { useStorageActions } from "../storage/useStorageActions";
+import { GatewayEventsEnum } from "@/server/modules/gateway/gateway.events";
 
 export const useGetRootEntities = () => {
   const queryClient = useQueryClient();
@@ -17,7 +17,7 @@ export const useGetRootEntities = () => {
   );
 
   useSubscribe(
-    StorageGatewayEventsEnum.ON_NEW_ENTITY_DETECTED,
+    GatewayEventsEnum.ON_NEW_ENTITY_DETECTED,
     (data: { file: File }) => {
       const { file } = data;
 
@@ -28,7 +28,7 @@ export const useGetRootEntities = () => {
   );
 
   useSubscribe(
-    StorageGatewayEventsEnum.ON_NEW_ENTITY_UPLOADED,
+    GatewayEventsEnum.ON_NEW_ENTITY_UPLOADED,
     (data: { file: File }) => {
       const { file } = data;
 

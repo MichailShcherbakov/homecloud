@@ -1,44 +1,33 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne } from "typeorm";
 import { DirectoryEntity } from "./directory.entity";
+import { IEntity } from "./entity.interface";
 
 @Entity("files")
-export class FileEntity {
-  @PrimaryGeneratedColumn("uuid")
-  uuid: string;
-
+export class FileEntity extends IEntity {
   @Column()
   name: string;
 
-  @Column()
-  size: number;
+  @Column({ type: "varchar" })
+  private _size: string;
 
-  @Column({ unique: true })
-  absolutePath: string;
+  @Column({ type: "varchar" })
+  hash: string;
 
-  @Column({ unique: true })
-  relativePath: string;
-
-  @Column({ type: "uuid", name: "parent_directory_uuid", nullable: true })
-  public parentDirectoryUUID?: string;
+  @Column({ type: "uuid", name: "directory_uuid", nullable: true })
+  directoryUuid?: string;
 
   @ManyToOne(() => DirectoryEntity, { onDelete: "CASCADE" })
   @JoinColumn({
-    name: "parent_directory_uuid",
+    name: "directory_uuid",
     referencedColumnName: "uuid",
   })
-  public parentDirectory?: DirectoryEntity;
+  directory?: DirectoryEntity;
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+  get size(): bigint {
+    return BigInt(this._size);
+  }
 
-  @CreateDateColumn()
-  createdAt: Date;
+  set size(val: bigint) {
+    this._size = val.toString();
+  }
 }

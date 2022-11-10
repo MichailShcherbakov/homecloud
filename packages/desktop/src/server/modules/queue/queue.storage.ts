@@ -1,15 +1,14 @@
 import { JobEntity, JobStatusEnum } from "@/server/db/entities/job.entity";
-import { toJSON } from "@/server/utils/json";
+import { Utils } from "@/server/utils";
 import { Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Not, Repository } from "typeorm";
 import {
-  IQueueJobsStorage,
-  Job,
-  QueueJobsStorage,
   QUEUE_MODULE_DEFAULT_PROCESS,
   QUEUE_MODULE_DEFAULT_PROCESSOR,
-} from "../queue";
+} from "./queue.constants";
+import { QueueJobsStorage } from "./queue.decorators";
+import { IQueueJobsStorage, Job } from "./queue.job";
 
 @QueueJobsStorage()
 export class JobsStorage implements IQueueJobsStorage {
@@ -22,7 +21,7 @@ export class JobsStorage implements IQueueJobsStorage {
   saveJob(job: Job, status: JobStatusEnum) {
     return this.jobsRepository.save({
       uuid: job.uuid,
-      data: toJSON(job.data, { compress: true }),
+      data: Utils.format.toJSON(job.data, { compress: true }),
       processorName: job.processorName,
       processName: job.processName,
       status,
@@ -56,7 +55,7 @@ export class JobsStorage implements IQueueJobsStorage {
     return this.jobsRepository.findOne({
       where: {
         uuid: job.uuid,
-        data: job.data && toJSON(job.data, { compress: true }),
+        data: job.data && Utils.format.toJSON(job.data, { compress: true }),
         processorName: job.processorName ?? QUEUE_MODULE_DEFAULT_PROCESSOR,
         processName: job.processName ?? QUEUE_MODULE_DEFAULT_PROCESS,
         status: job.status,

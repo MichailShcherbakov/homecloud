@@ -1,5 +1,5 @@
 import { Entity } from "@/server/modules/file-system/type";
-import { fromJSON } from "@/server/utils/json";
+import { fromJSON } from "@/server/utils/format/json";
 import { DropEvent } from "../common/hooks/dnd/types";
 import { useDrop } from "../common/hooks/dnd/useDrop";
 import { QueueDestination, QueueTarget } from "../store/reducers/queue.reducer";

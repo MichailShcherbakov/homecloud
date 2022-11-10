@@ -6,7 +6,7 @@ import { QueueExplorer } from "./queue.explorer";
 import { DiscoveryModule } from "@nestjs/core";
 import { QueueMetadataAccessor } from "./queue.metadata-accessor";
 import { createQueueProviders } from "./queue.providers";
-import { JobsStorage } from "../storage/storage.queue-jobs";
+import { JobsStorage } from "./queue.storage";
 
 @Module({})
 export class QueueModule {
@@ -21,7 +21,7 @@ export class QueueModule {
   }
 
   static registerQueue(options: QueueModuleOptions): DynamicModule {
-    const queueProviders = createQueueProviders(options);
+    const queueProviders = createQueueProviders({ concurrency: 1, ...options });
     return {
       module: QueueModule,
       imports: [QueueModule.registerCore()],

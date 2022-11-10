@@ -1,10 +1,5 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
+import { Column, Entity } from "typeorm";
+import { IEntity } from "./entity.interface";
 
 export enum JobStatusEnum {
   PROCESSING = "PROCESSING",
@@ -13,11 +8,8 @@ export enum JobStatusEnum {
   STOPPED = "STOPPED",
 }
 
-@Entity("jobs", {})
-export class JobEntity {
-  @PrimaryGeneratedColumn("uuid")
-  uuid: string;
-
+@Entity("jobs")
+export class JobEntity extends IEntity {
   @Column()
   data: string;
 
@@ -29,10 +21,4 @@ export class JobEntity {
 
   @Column()
   status: JobStatusEnum;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
-  @CreateDateColumn()
-  createdAt: Date;
 }

@@ -1,4 +1,4 @@
-import { Statistics } from "@server/modules/storage/type";
+import { Statistics } from "@/server/modules/storage/storage.type";
 import axios from "axios";
 import { useQuery } from "react-query";
 

@@ -1,8 +1,10 @@
-import { Module } from "@nestjs/common";
+import { Logger, Module } from "@nestjs/common";
 import { FileSystemService } from "./file-system.service";
+import { WatcherModule } from "./watcher";
 
 @Module({
-  providers: [FileSystemService],
+  imports: [WatcherModule],
+  providers: [Logger, FileSystemService],
   exports: [FileSystemService],
 })
 export class FileSystemModule {}

@@ -1,4 +1,4 @@
-import { StorageGatewayEventsEnum } from "@/server/modules/storage/storage.events";
+import { GatewayEventsEnum } from "@/server/modules/gateway/gateway.events";
 import React from "react";
 import { io, Socket } from "socket.io-client";
 
@@ -29,7 +29,7 @@ export function useSocket() {
 }
 
 export function useSubscribe<TData extends Record<string, any>>(
-  type: StorageGatewayEventsEnum,
+  type: GatewayEventsEnum,
   callback: (data: TData) => void
 ) {
   const ctx = React.useContext(SubscriptionsContext);

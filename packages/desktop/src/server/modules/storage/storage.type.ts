@@ -1,13 +1,13 @@
 export interface Statistics {
   directories: {
     count: number;
-    size: number;
+    size: BigInt;
   };
   files: {
     count: number;
-    size: number;
+    size: BigInt;
   };
   storage: {
-    size: number;
+    size: BigInt;
   };
 }

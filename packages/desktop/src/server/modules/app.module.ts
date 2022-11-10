@@ -6,12 +6,9 @@ import { ConverterModule } from "./converter";
 import { StorageModule } from "./storage";
 import { ConfigModule } from "./config";
 import { QueueModule } from "./queue";
-import { MulterModule } from "@nestjs/platform-express";
-import { ConfigService } from "./config/config.service";
-import { diskStorage } from "multer";
-import { join } from "path";
-import { existsSync, mkdirSync } from "fs";
-import { v4 as uuidv4 } from "uuid";
+import { FileSystemModule } from "./file-system";
+import { SyncModule } from "./sync/sync.module";
+import { GatewayModule } from "./gateway/gateway.module";
 
 @Module({
   imports: [
@@ -23,14 +20,17 @@ import { v4 as uuidv4 } from "uuid";
     }),
     TypeOrmModule.forRoot({
       type: "sqlite",
-      database: "homecloud.sqlite",
+      database: "homecloud.db.sqlite",
       autoLoadEntities: true,
       synchronize: true,
     }),
     QueueModule.forRoot(),
     ConfigModule,
-    ConverterModule,
     StorageModule,
+    FileSystemModule,
+    // SyncModule,
+    // ConverterModule,
+    // GatewayModule,
   ],
   providers: [Logger],
   controllers: [AppContoller],

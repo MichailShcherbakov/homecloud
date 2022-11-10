@@ -1,5 +1,5 @@
 import { QueueJobStageEnum } from "@/client/store/reducers/queue.reducer";
-import { StorageGatewayEventsEnum } from "@/server/modules/storage/storage.events";
+import { GatewayEventsEnum } from "@/server/modules/gateway/gateway.events";
 import { Entity } from "@server/modules/file-system/type";
 import axios from "axios";
 import { useQuery, useQueryClient } from "react-query";
@@ -31,11 +31,11 @@ export const useGetUploadEntities = () => {
       })
   );
 
-  useSubscribe(StorageGatewayEventsEnum.ON_NEW_ENTITY_DETECTED, () => {
+  useSubscribe(GatewayEventsEnum.ON_NEW_ENTITY_DETECTED, () => {
     queryClient.invalidateQueries(["entities", "upload"]);
   });
 
-  useSubscribe(StorageGatewayEventsEnum.ON_NEW_ENTITY_UPLOADED, () => {
+  useSubscribe(GatewayEventsEnum.ON_NEW_ENTITY_UPLOADED, () => {
     queryClient.invalidateQueries(["entities", "upload"]);
   });
 };

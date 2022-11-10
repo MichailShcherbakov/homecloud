@@ -1,43 +1,37 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
+import { Column, Entity, Tree, TreeChildren, TreeParent } from "typeorm";
+import { IEntity } from "./entity.interface";
 
 @Entity("directories")
-export class DirectoryEntity {
-  @PrimaryGeneratedColumn("uuid")
-  uuid: string;
-
+@Tree("closure-table", {
+  closureTableName: "directory_closure",
+  ancestorColumnName: column => "ancestor_" + column.propertyName,
+  descendantColumnName: column => "descendant_" + column.propertyName,
+})
+export class DirectoryEntity extends IEntity {
   @Column()
   name: string;
 
-  @Column()
-  size: number;
+  @Column({ type: "varchar" })
+  private _size: string;
 
-  @Column({ unique: true })
-  absolutePath: string;
+  @Column({ type: "varchar" })
+  hash: string;
 
-  @Column({ unique: true })
-  relativePath: string;
+  @TreeChildren()
+  children: DirectoryEntity[];
 
-  @Column({ type: "uuid", name: "parent_directory_uuid", nullable: true })
-  public parentDirectoryUUID?: string;
+  @TreeParent()
+  parent: DirectoryEntity | null;
 
-  @ManyToOne(() => DirectoryEntity, { onDelete: "CASCADE" })
-  @JoinColumn({
-    name: "parent_directory_uuid",
-    referencedColumnName: "uuid",
-  })
-  public parentDirectory?: DirectoryEntity;
+  get size(): bigint {
+    return BigInt(this._size);
+  }
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+  set size(val: bigint) {
+    this._size = val.toString();
+  }
 
-  @CreateDateColumn()
-  createdAt: Date;
+  clone(): DirectoryEntity {
+    return Object.assign(new DirectoryEntity(), this);
+  }
 }

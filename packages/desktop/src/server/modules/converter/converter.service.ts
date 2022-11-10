@@ -4,8 +4,8 @@ import hidefile from "hidefile";
 import { mkdir, rm } from "fs/promises";
 import { ConfigService } from "../config/config.service";
 import { Queue } from "../queue/queue";
-import { access } from "@server/utils/access";
-import { getInfoFromPath } from "@/server/utils/getInfoFromPath";
+import { access } from "@/server/utils/fs/access";
+import { getInfoFromPath } from "@/server/utils/fs/getInfoFromPath";
 import { OnEvent } from "@nestjs/event-emitter";
 import { FileEntity } from "@/server/db/entities/file.entity";
 import { StorageManager } from "../storage/storage.manager";
@@ -26,7 +26,7 @@ export class Converter implements OnModuleInit {
   async onModuleInit() {
     return;
 
-    const absoluteRootPath = await this.config.getAbsoluteRootPath();
+    const absoluteRootPath = this.config.getAbsoluteRootPath();
     const mediaDirPath = `${absoluteRootPath}/.media`;
     const isMediaDirExists = await access(mediaDirPath);
 
@@ -51,7 +51,7 @@ export class Converter implements OnModuleInit {
   private async onAddFile(file: FileEntity) {
     return;
 
-    const absoluteRootPath = await this.config.getAbsoluteRootPath();
+    const absoluteRootPath = this.config.getAbsoluteRootPath();
 
     const { filename, relativeDirPath } = getInfoFromPath(
       absoluteRootPath,
@@ -109,7 +109,7 @@ export class Converter implements OnModuleInit {
   private async onRemoveFile(file: FileEntity) {
     return;
 
-    const absoluteRootPath = await this.config.getAbsoluteRootPath();
+    const absoluteRootPath = this.config.getAbsoluteRootPath();
 
     const { filename, relativeDirPath } = getInfoFromPath(
       absoluteRootPath,

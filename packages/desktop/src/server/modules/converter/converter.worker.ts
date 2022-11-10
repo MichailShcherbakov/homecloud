@@ -10,8 +10,7 @@ import {
   Processor,
 } from "../queue/queue.decorators";
 import { Job } from "../queue/queue.job";
-import { StorageGatewayEventsEnum } from "../storage/storage.events";
-import { StorageGateway } from "../storage/storage.gateway";
+import { StorageGateway } from "../gateway/gateway.service";
 
 export interface ConverterWorkerJobData {
   file: FileEntity;
@@ -21,10 +20,7 @@ export interface ConverterWorkerJobData {
 
 @Processor("converter")
 export class ConverterWorker {
-  constructor(
-    private readonly logger: Logger,
-    private readonly gateway: StorageGateway
-  ) {}
+  constructor(private readonly logger: Logger) {}
 
   @Process()
   async covert(job: Job<ConverterWorkerJobData>) {
@@ -46,14 +42,6 @@ export class ConverterWorker {
       `[${job.uuid}] Processing..: ${progress}%`,
       ConverterWorker.name
     );
-
-    this.gateway.sendMessage(
-      StorageGatewayEventsEnum.ON_NEW_ENTITY_UPLOAD_PROGRESS,
-      {
-        file: job.data.file,
-        progress,
-      }
-    );
   }
 
   @OnJobCompleted()
@@ -62,10 +50,6 @@ export class ConverterWorker {
       `[${job.uuid}]The conversion is done.`,
       ConverterWorker.name
     );
-
-    this.gateway.sendMessage(StorageGatewayEventsEnum.ON_NEW_ENTITY_UPLOADED, {
-      file: job.data.file,
-    });
   }
 
   @OnJobFailed()

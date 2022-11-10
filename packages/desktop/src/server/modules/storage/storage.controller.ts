@@ -15,69 +15,43 @@ import type { Response } from "express";
 import { join } from "path";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
-import { ConfigService } from "../config/config.service";
 import { UploadDto } from "./storage.dto";
+import { v4 as uuidv4 } from "uuid";
+import { Statistics } from "./storage.type";
+import { FileEntity } from "@/server/db/entities/file.entity";
+import { DirectoryEntity } from "@/server/db/entities/directory.entity";
 
 @Controller("/storage")
 export class StorageController {
   constructor(private readonly storageService: StorageService) {}
 
   @Get("/statistics")
-  getStatistics() {
+  getStatistics(): Promise<Statistics> {
     return this.storageService.getStatistics();
   }
 
   @Get("/")
-  getRootEntities() {
+  getRootEntities(): Promise<(FileEntity | DirectoryEntity)[]> {
     return this.storageService.getRootEntities();
   }
 
-  @Get("/path-to/:uuid")
-  getPathToDir(@Param("uuid", ParseUUIDPipe) uuid: string) {
-    return this.storageService.getPathToDir(uuid);
-  }
-
   @Get("/dirs/:uuid")
-  getDirEntities(@Param("uuid", ParseUUIDPipe) uuid: string) {
+  getDirectoryEntities(
+    @Param("uuid", ParseUUIDPipe) uuid: string
+  ): Promise<(FileEntity | DirectoryEntity)[]> {
     return this.storageService.getDirEntities(uuid);
   }
 
-  @Get("/upload")
-  getUploadEntities() {
-    return this.storageService.getUploadEntities();
-  }
-
-  @Post("/upload")
-  @UseInterceptors(
-    FileInterceptor("file", {
-      limits: {
-        fileSize: 5 * 1024 * 1024 * 1024, /// 5 Gb
-      },
-      storage: diskStorage({
-        destination: (_req, _file, cb) => {
-          const uploadPath = join(__dirname, "tmp");
-
-          if (!existsSync(uploadPath)) mkdirSync(uploadPath);
-
-          cb(null, uploadPath);
-        },
-        filename: (_req, file, cb) => {
-          cb(null, file.originalname);
-        },
-      }),
-    })
-  )
-  async uploadEntity(
-    @UploadedFile() file: Express.Multer.File | undefined,
-    @Body() body: UploadDto
+  @Get("/files/:uuid")
+  async getFile(
+    @Param("uuid", ParseUUIDPipe) uuid: string,
+    @Res() res: Response
   ): Promise<void> {
-    const { target, destination } = body;
+    const path = await this.storageService.getGlobaFilePath(uuid);
 
-    console.log(file, body);
+    res.contentType("application/vnd.apple.mpegurl");
 
-    await this.storageService.upload({
-      file,
-    });
+    createReadStream(path).pipe(res);
   }
 
   @Get("/files/:uuid/:segment")
@@ -85,7 +59,7 @@ export class StorageController {
     @Param("uuid", ParseUUIDPipe) uuid: string,
     @Param("segment") segment: string,
     @Res() res: Response
-  ) {
+  ): Promise<void> {
     const path = await this.storageService.getGlobaFilePath(uuid);
     const rawPath = path.replaceAll("\\", "/").split("/");
 
@@ -98,15 +72,47 @@ export class StorageController {
     createReadStream(segmentPath).pipe(res);
   }
 
-  @Get("/files/:uuid")
-  async getFile(
-    @Param("uuid", ParseUUIDPipe) uuid: string,
-    @Res() res: Response
-  ) {
-    const path = await this.storageService.getGlobaFilePath(uuid);
+  @Get("/path-to/:uuid")
+  getPathToDir(
+    @Param("uuid", ParseUUIDPipe) uuid: string
+  ): Promise<DirectoryEntity[]> {
+    return this.storageService.getAncestorsDirectory(uuid);
+  }
 
-    res.contentType("application/vnd.apple.mpegurl");
+  @Get("/upload")
+  getUploadEntities(): Promise<(FileEntity | DirectoryEntity)[]> {
+    return this.storageService.getUploadEntities();
+  }
 
-    createReadStream(path).pipe(res);
+  @Post("/upload")
+  @UseInterceptors(
+    FileInterceptor("files", {
+      limits: {
+        fileSize: 5 * 1024 * 1024 * 1024, /// 5 Gb
+      },
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const uploadPath = process.env.TEMP_DIST as string;
+
+          if (!existsSync(uploadPath)) mkdirSync(uploadPath);
+
+          cb(null, uploadPath);
+        },
+        filename: (_req, _file, cb) => {
+          cb(null, uuidv4());
+        },
+      }),
+    })
+  )
+  async upload(
+    @UploadedFile() files: Array<Express.Multer.File>,
+    @Body() body: UploadDto
+  ): Promise<void> {
+    const { destination } = body;
+
+    await this.storageService.upload({
+      files,
+      destination,
+    });
   }
 }

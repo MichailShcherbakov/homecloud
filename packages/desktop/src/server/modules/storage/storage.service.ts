@@ -1,15 +1,16 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "../config/config.service";
-import { Statistics } from "./type";
+import { Statistics } from "./storage.type";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DirectoryEntity } from "@/server/db/entities/directory.entity";
 import { In, IsNull, Repository } from "typeorm";
 import { FileEntity } from "@/server/db/entities/file.entity";
 import { join, parse } from "path";
-import { JobsStorage } from "./storage.queue-jobs";
-import { fromJSON } from "@/server/utils/json";
-import { rename } from "fs/promises";
+import { JobsStorage } from "../queue/queue.storage";
+import { fromJSON } from "@/server/utils/format/json";
 import { StorageManager } from "./storage.manager";
+import { UploadDto } from "./storage.dto";
+import { computeFileHash } from "@/server/utils/fs/computeFileHash";
 
 @Injectable()
 export class StorageService {
@@ -17,31 +18,19 @@ export class StorageService {
     private readonly logger: Logger,
     private readonly config: ConfigService,
     private readonly storageManager: StorageManager,
-    private readonly jobStorage: JobsStorage,
-    @InjectRepository(DirectoryEntity)
-    private readonly directoriesRepository: Repository<DirectoryEntity>,
-    @InjectRepository(FileEntity)
-    private readonly filesRepository: Repository<FileEntity>
+    private readonly jobStorage: JobsStorage
   ) {}
 
   async getStatistics(): Promise<Statistics> {
     const [filesCount, dirsCount, filesSize, dirsSize] = await Promise.all([
-      this.filesRepository.count(),
-      this.directoriesRepository.count(),
-      this.filesRepository
-        .find({
-          where: {
-            parentDirectoryUUID: IsNull(),
-          },
-        })
-        .then(files => files.reduce((size, f) => size + f.size, 0)),
-      this.directoriesRepository
-        .find({
-          where: {
-            parentDirectoryUUID: IsNull(),
-          },
-        })
-        .then(dirs => dirs.reduce((size, d) => size + d.size, 0)),
+      this.storageManager.getFilesCount(),
+      this.storageManager.getDirectoriesCount(),
+      this.storageManager
+        .getRootFiles()
+        .then(files => files.reduce((size, f) => size + f.size, BigInt(0))),
+      this.storageManager
+        .getRootDirectories()
+        .then(dirs => dirs.reduce((size, d) => size + d.size, BigInt(0))),
     ]);
 
     return {
@@ -66,13 +55,17 @@ export class StorageService {
   async getDirEntities(
     uuid?: string
   ): Promise<(DirectoryEntity | FileEntity)[]> {
+    const directory = uuid
+      ? await this.storageManager.getDirectoryByUuid(uuid)
+      : null;
+
     const [dirs, files] = await Promise.all([
-      this.directoriesRepository.findBy({
-        parentDirectoryUUID: uuid ? uuid : IsNull(),
-      }),
-      this.filesRepository.findBy({
-        parentDirectoryUUID: uuid ? uuid : IsNull(),
-      }),
+      directory
+        ? this.storageManager.getDirectoriesIn(directory)
+        : this.storageManager.getRootDirectories(),
+      directory
+        ? this.storageManager.getFilesIn(directory)
+        : this.storageManager.getRootFiles(),
     ]);
 
     const converterProcessingJobs = await this.jobStorage.getProcessingJobs({
@@ -94,40 +87,28 @@ export class StorageService {
   }
 
   async getGlobaFilePath(uuid: string): Promise<string> {
-    const rootPath = await this.config.getAbsoluteRootPath();
-    const file = await this.filesRepository.findOneBy({
-      uuid,
-    });
+    /*  const rootPath = this.config.getAbsoluteRootPath();
+    const file = await this.storageManager.getFileByUuid(uuid);
 
     if (!file) throw new NotFoundException(`The file was not found: ${uuid}`);
 
     const raw = parse(file.relativePath);
 
-    return join(rootPath, ".media", raw.dir, raw.name, `${raw.name}.m3u8`);
+    return join(rootPath, ".media", raw.dir, raw.name, `${raw.name}.m3u8`); */
+
+    return "";
   }
 
-  async getPathToDir(uuid: string): Promise<DirectoryEntity[]> {
-    let currentDirUuid: string | undefined = uuid;
-    const dirs: DirectoryEntity[] = [];
+  async getAncestorsDirectory(uuid: string): Promise<DirectoryEntity[]> {
+    const directory = await this.storageManager.getDirectoryByUuid(uuid);
 
-    while (currentDirUuid) {
-      const dir: DirectoryEntity | null =
-        await this.directoriesRepository.findOneBy({
-          uuid: currentDirUuid,
-        });
+    if (!directory) return [];
 
-      if (!dir) break;
-
-      dirs.unshift(dir);
-
-      currentDirUuid = dir.parentDirectoryUUID;
-    }
-
-    return dirs;
+    return this.storageManager.getAncestorsDirectory(directory);
   }
 
   async getUploadEntities(): Promise<(DirectoryEntity | FileEntity)[]> {
-    const converterProcessingJobs = await this.jobStorage.getProcessingJobs({
+    /*  const converterProcessingJobs = await this.jobStorage.getProcessingJobs({
       processorName: "converter",
     });
 
@@ -142,45 +123,31 @@ export class StorageService {
       relations: {
         parentDirectory: true,
       },
-    });
+    }); */
+
+    return [];
   }
 
-  async upload(options: {
-    file?: Express.Multer.File;
-    targetUUID: string;
-    destinationUUID?: string;
-  }): Promise<void> {
-    const { file, targetUUID, destinationUUID } = options;
+  async upload(
+    options: UploadDto & {
+      files: Array<Express.Multer.File>;
+    }
+  ): Promise<void> {
+    const { files, destination } = options;
 
-    const absoluteRootPath = await this.config.getAbsoluteRootPath();
-
-    const destinationDirectory = destinationUUID
-      ? await this.directoriesRepository.findOneBy({
-          uuid: destinationUUID,
-        })
+    const destDirectory = destination?.uuid
+      ? await this.storageManager.getDirectoryByUuid(destination.uuid)
       : null;
 
-    if (file) {
-      const absolutePath =
-        destinationDirectory?.absolutePath ?? absoluteRootPath;
-
-      await rename(file.path, absolutePath);
-    } else if (targetUUID) {
-      const [targetFile, targetDir] = await Promise.all([
-        this.filesRepository.findOneBy({ uuid: targetUUID }),
-        this.directoriesRepository.findOneBy({ uuid: targetUUID }),
-      ]);
-
-      const target = targetFile ?? targetDir;
-
-      if (!target)
-        throw new NotFoundException(`The target entity was not found`);
-
-      target.parentDirectory = destinationDirectory ?? undefined;
-      target.parentDirectoryUUID = destinationDirectory?.uuid;
-
-      if (targetDir) await this.storageManager.saveDirectory(target);
-      else if (targetFile) await this.storageManager.saveFile(target);
-    }
+    await Promise.all(
+      files.map(async f => {
+        const fileEntity = new FileEntity();
+        fileEntity.uuid = f.filename;
+        fileEntity.name = f.originalname;
+        fileEntity.hash = await computeFileHash(f.path);
+        fileEntity.size = BigInt(f.size);
+        return this.storageManager.createFile(fileEntity, destDirectory);
+      })
+    );
   }
 }

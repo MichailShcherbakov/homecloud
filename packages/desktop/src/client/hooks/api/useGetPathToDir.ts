@@ -1,4 +1,4 @@
-import { StorageGatewayEventsEnum } from "@/server/modules/storage/storage.events";
+import { GatewayEventsEnum } from "@/server/modules/gateway/gateway.events";
 import { Directory } from "@server/modules/file-system/type";
 import axios from "axios";
 import { useQuery, useQueryClient } from "react-query";
@@ -21,7 +21,7 @@ export const useGetPathToDir = () => {
     }).then(response => response.data as Directory[])
   );
 
-  useSubscribe(StorageGatewayEventsEnum.ON_NEW_ENTITY_DETECTED, () => {
+  useSubscribe(GatewayEventsEnum.ON_NEW_ENTITY_DETECTED, () => {
     queryClient.invalidateQueries(["dirs", currentDirectory?.uuid, "path-to"]);
   });
 

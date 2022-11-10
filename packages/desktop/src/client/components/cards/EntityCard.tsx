@@ -6,7 +6,7 @@ import { ReactComponent as DirectoryIcon } from "@client/assets/folder.svg";
 import { ReactComponent as FileIcon } from "@client/assets/file.svg";
 import { useEntityDrop } from "@/client/hooks/useEntityDrop";
 import { useDrag } from "@/client/common/hooks/dnd/useDrag";
-import { toJSON } from "@/server/utils/json";
+import { toJSON } from "@/server/utils/format/json";
 import { useQueueActions } from "@/client/hooks/queue/useQueueActions";
 import { QueueJobStageEnum } from "@/client/store/reducers/queue.reducer";
 import { useCurrentDirectory } from "@/client/hooks/storage/useCurrentDirectory";

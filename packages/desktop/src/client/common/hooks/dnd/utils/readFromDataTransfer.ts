@@ -1,4 +1,4 @@
-import { fromJSON } from "@/server/utils/json";
+import { fromJSON } from "@/server/utils/format/json";
 import { CUSTOM_DRAG_TYPE, GENERIC_TYPE } from "../constants";
 import { DirectoryDropItem, DropItem, FileDropItem } from "../types";
 

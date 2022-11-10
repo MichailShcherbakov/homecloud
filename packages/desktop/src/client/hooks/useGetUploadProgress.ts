@@ -1,7 +1,7 @@
 import React from "react";
-import { StorageGatewayEventsEnum } from "@/server/modules/storage/storage.events";
 import { File } from "@server/modules/file-system/type";
 import { useSubscribe } from "../common/SubscriptionsContext";
+import { GatewayEventsEnum } from "@/server/modules/gateway/gateway.events";
 
 export const useGetUploadProgress = () => {
   const uploadFileProgress = React.useMemo(() => new Map<string, number>(), []);
@@ -9,7 +9,7 @@ export const useGetUploadProgress = () => {
   const [progress, setProgress] = React.useState(0);
 
   useSubscribe(
-    StorageGatewayEventsEnum.ON_NEW_ENTITY_UPLOAD_PROGRESS,
+    GatewayEventsEnum.ON_NEW_ENTITY_UPLOAD_PROGRESS,
     (data: { file: File; progress: number }) => {
       const { file, progress } = data;
 

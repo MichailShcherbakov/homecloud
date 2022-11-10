@@ -1,68 +1,95 @@
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { resolve } from "path";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ConfigEntity } from "@/server/db/entities/config.entity";
-import { IsNull, Not, Repository } from "typeorm";
+import { Injectable, Logger } from "@nestjs/common";
+import { readFileSync, writeFileSync } from "fs";
+import { resolve, join } from "path";
+import { fromJSON, toJSON } from "@/server/utils/format";
+import {
+  DEFAULT_CONFIG_NAME,
+  DEFAULT_CONFIG_DIR_NAME,
+} from "./config.constans";
 
-const DEFAULT_CONFIG_DIR_NAME = "storage";
+export interface Config {
+  absoluteRootPath: string;
+  absoluteTempPath: string;
+}
 
 @Injectable()
-export class ConfigService implements OnModuleInit {
-  private config: ConfigEntity;
+export class ConfigService {
+  private config: Config;
 
-  constructor(
-    @InjectRepository(ConfigEntity)
-    private readonly configRepository: Repository<ConfigEntity>,
-    private readonly logger: Logger
-  ) {}
+  constructor(private readonly logger: Logger) {
+    const configAbsolutePath = join(process.cwd(), DEFAULT_CONFIG_NAME);
 
-  async onModuleInit() {
-    /*  return first config */
-    let config = await this.configRepository.findOne({
-      where: {
-        uuid: Not(IsNull()),
-      },
-    });
+    try {
+      const data = readFileSync(configAbsolutePath, "utf8");
+      const config = fromJSON<Partial<Config>>(data);
 
-    if (!config) {
-      this.logger.log(`Creating initial configuration...`, ConfigService.name);
+      if (!config.absoluteRootPath || !config.absoluteTempPath)
+        throw new Error(`Incorrect config file`);
 
-      const initialConfig = new ConfigEntity();
-      // initialConfig.rootPath = resolve(process.cwd(), DEFAULT_CONFIG_DIR_NAME);
-      initialConfig.rootPath = "C:\\Users\\Michail\\Downloads\\homecloud";
+      this.config = {
+        absoluteRootPath: config.absoluteRootPath,
+        absoluteTempPath: config.absoluteTempPath,
+      };
+    } catch (e) {
+      this.logger.error(`Failed to read config file.`, ConfigService.name);
 
-      config = await this.configRepository.save(initialConfig);
+      this.logger.log(`Creating initial config file...`, ConfigService.name);
+
+      this.config = {
+        // absoluteRootPath: resolve(process.cwd(), DEFAULT_CONFIG_DIR_NAME),
+        absoluteRootPath: "C:\\Users\\Michail\\Downloads\\homecloud",
+        absoluteTempPath: process.env.TEMP_DIST as string,
+      };
+
+      writeFileSync(configAbsolutePath, toJSON(this.config));
 
       this.logger.log(
-        `The initial configuration was created.`,
+        `The initial config file was created.`,
+        ConfigService.name
+      );
+    } finally {
+      this.logger.log(
+        `Loaded the configuration:\n${toJSON(this.config)}`,
         ConfigService.name
       );
     }
+  }
 
-    this.config = config;
+  getAbsoluteRootPath(): string {
+    return this.config.absoluteRootPath;
+  }
+
+  setAbsoluteRootPath(path: string): void {
+    this.config.absoluteRootPath = path;
+
+    this.sync();
+  }
+
+  private sync(): void {
+    const configAbsolutePath = join(process.cwd(), DEFAULT_CONFIG_NAME);
+
+    writeFileSync(configAbsolutePath, toJSON(this.config));
 
     this.logger.log(
-      `Loaded the configuration:\n${JSON.stringify(this.config, null, 4)}`,
+      `Sync configuration:/n${toJSON(this.config)}`,
       ConfigService.name
     );
   }
 
-  async getAbsoluteRootPath(): Promise<string> {
-    return this.config.rootPath;
+  getRelativePathBy(absolutePath: string): string {
+    const absoluteRootPath = this.getAbsoluteRootPath();
+
+    const relativePath = absolutePath.replace(absoluteRootPath, "");
+
+    if (relativePath === absolutePath)
+      throw new Error(
+        `The root path and the given absolute path is not comparable: ${absoluteRootPath} ${absolutePath}`
+      );
+
+    return relativePath;
   }
 
-  async setAbsoluteRootPath(path: string): Promise<void> {
-    this.config.rootPath = path;
-
-    await this.sync();
-  }
-
-  private async sync(): Promise<void> {
-    await this.configRepository.save(this.config);
-
-    this.logger.log(
-      `Sync configuration:/n${JSON.stringify(this.config, null, 4)}`,
-      ConfigService.name
-    );
+  public getAbsoluteTempPath() {
+    return this.config.absoluteTempPath;
   }
 }

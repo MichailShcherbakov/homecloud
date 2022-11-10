@@ -1,4 +1,4 @@
-import { toJSON } from "@/server/utils/json";
+import { toJSON } from "@/server/utils/format/json";
 import { Logger } from "@nestjs/common";
 import {
   MessageBody,
@@ -9,14 +9,14 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { Server } from "socket.io";
-import { StorageGatewayEventsEnum } from "./storage.events";
+import { GatewayEventsEnum } from "./gateway.events";
 
 @WebSocketGateway({
   cors: {
     origin: "*",
   },
 })
-export class StorageGateway
+export class GatewayService
   implements OnGatewayConnection, OnGatewayDisconnect
 {
   constructor(private readonly logger: Logger) {}
@@ -25,11 +25,11 @@ export class StorageGateway
   private readonly server: Server;
 
   handleConnection() {
-    this.logger.log("Connected new client", StorageGateway.name);
+    this.logger.log("Connected new client", GatewayService.name);
   }
 
   handleDisconnect() {
-    this.logger.log("Disconnected the client", StorageGateway.name);
+    this.logger.log("Disconnected the client", GatewayService.name);
   }
 
   @SubscribeMessage("storage.subs")
@@ -37,15 +37,15 @@ export class StorageGateway
     return data;
   }
 
-  public sendMessage<TData extends Record<string, any>>(
-    type: StorageGatewayEventsEnum,
+  private sendMessage<TData extends Record<string, any>>(
+    type: GatewayEventsEnum,
     data: TData
   ) {
     this.server.emit(type, data);
 
     this.logger.log(
       `Send message:\n - type: ${type}\n - data: ${toJSON(data)}`,
-      StorageGateway.name
+      GatewayService.name
     );
   }
 }

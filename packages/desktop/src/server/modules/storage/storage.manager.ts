@@ -1,153 +1,237 @@
 import { DirectoryEntity } from "@/server/db/entities/directory.entity";
 import { FileEntity } from "@/server/db/entities/file.entity";
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ConfigService } from "../config/config.service";
+import { StorageEventEnum } from "./storage.events";
+import { FileService } from "./file.service";
+import { DirectoryService } from "./directory.service";
 
 @Injectable()
 export class StorageManager {
   constructor(
     private readonly config: ConfigService,
     private readonly emitter: EventEmitter2,
-    @InjectRepository(DirectoryEntity)
-    private readonly directoriesRepository: Repository<DirectoryEntity>,
-    @InjectRepository(FileEntity)
-    private readonly filesRepository: Repository<FileEntity>
+    private readonly fileService: FileService,
+    private readonly directoryService: DirectoryService
   ) {}
 
+  /**
+   * @param
+   * @returns
+   */
+  public getRootDirectories() {
+    return this.directoryService.getRootDirectories();
+  }
+
+  /**
+   * @param
+   * @returns
+   */
+  public getDirectoriesCount() {
+    return this.directoryService.getDirectoriesCount();
+  }
+
+  /**
+   * @param uuid
+   * @returns
+   */
   public getDirectoryByUuid(uuid: string) {
-    return this.directoriesRepository.findOneBy({
-      uuid,
-    });
+    return this.directoryService.getDirectoryByUuid(uuid);
   }
 
-  public getDirectoryByAbsolutePath(absolutePath: string) {
-    return this.directoriesRepository.findOneBy({
-      absolutePath,
-    });
+  /**
+   * @param absolutePath
+   * @returns
+   */
+  public async getDirectoryByAbsolutePath(absolutePath: string) {
+    return this.directoryService.getDirectoryByAbsolutePath(absolutePath);
   }
 
+  /**
+   * @param directory
+   * @returns
+   */
+  public getDirectoriesIn(directory: DirectoryEntity) {
+    return this.directoryService.getDirectoriesIn(directory);
+  }
+
+  /**
+   * @param directory
+   * @returns
+   */
+  public getAncestorsDirectory(directory: DirectoryEntity) {
+    return this.directoryService.getAncestorsDirectory(directory);
+  }
+
+  /**
+   * @param directory
+   * @returns
+   */
+  public async createDirectory(
+    directory: DirectoryEntity,
+    destDirectory: DirectoryEntity | null = null
+  ) {
+    const newDirectory = await this.directoryService.createDirectory(
+      directory,
+      destDirectory
+    );
+
+    this.emitter.emit(StorageEventEnum.ON_DIR_ADDED, newDirectory);
+
+    return newDirectory;
+  }
+
+  /**
+   * @param directory
+   * @param name
+   * @returns
+   */
+  public async renameDirectory(directory: DirectoryEntity, name: string) {
+    const updatedDirectory = await this.directoryService.renameDirectory(
+      directory,
+      name
+    );
+
+    this.emitter.emit(
+      StorageEventEnum.ON_DIR_RENAMED,
+      updatedDirectory,
+      directory
+    );
+
+    return updatedDirectory;
+  }
+
+  /**
+   * @param directory
+   * @param destDirectory
+   * @returns
+   */
+  public async moveDirectory(
+    directory: DirectoryEntity,
+    destDirectory: DirectoryEntity | null = null
+  ) {
+    const updatedDirectory = await this.directoryService.moveDirectory(
+      directory,
+      destDirectory
+    );
+
+    this.emitter.emit(
+      StorageEventEnum.ON_DIR_MOVED,
+      updatedDirectory,
+      directory
+    );
+
+    return updatedDirectory;
+  }
+
+  /**
+   *
+   * @param uuid
+   */
   public async deleteDirectoryByUuid(uuid: string) {
-    const dir = await this.getDirectoryByUuid(uuid);
+    const deletedDirectory = await this.directoryService.deleteDirectoryByUuid(
+      uuid
+    );
 
-    if (!dir) throw new Error(`The directory was not found: ${uuid}`);
+    this.emitter.emit(StorageEventEnum.ON_DIR_REMOVED, deletedDirectory);
 
-    await this.directoriesRepository.delete({
-      uuid,
-    });
-
-    this.emitter.emit("storage.remove_dir", dir);
+    return deletedDirectory;
   }
 
-  public async saveDirectory(directory: DirectoryEntity) {
-    const newDir = await this.directoriesRepository.save(directory);
-
-    this.emitter.emit("storage.add_dir", newDir);
-
-    return newDir;
+  /**
+   * @param
+   * @returns
+   */
+  public getFilesCount() {
+    return this.fileService.getFilesCount();
   }
 
-  public getFiles() {
-    return this.filesRepository.find();
+  /**
+   * @param
+   * @returns
+   */
+  public getRootFiles() {
+    return this.fileService.getRootFiles();
   }
 
+  /**
+   * @param uuid
+   * @returns
+   */
   public getFileByUuid(uuid: string) {
-    return this.filesRepository.findOneBy({
-      uuid,
-    });
+    return this.fileService.getFileByUuid(uuid);
   }
 
-  public getFileByAbsolutePath(absolutePath: string) {
-    return this.filesRepository.findOneBy({
-      absolutePath,
-    });
+  /**
+   * @param absolutePath
+   * @returns
+   */
+  public async getFileByAbsolutePath(absolutePath: string) {
+    return this.fileService.getFileByAbsolutePath(absolutePath);
   }
 
-  public async deleteFileByUuid(uuid: string) {
-    const file = await this.getFileByUuid(uuid);
-
-    if (!file) throw new Error(`The file was not found: ${uuid}`);
-
-    await this.filesRepository.delete({
-      uuid,
-    });
-
-    let currentDirectoryUUID = file.parentDirectoryUUID;
-
-    while (currentDirectoryUUID) {
-      const directory = await this.getDirectoryByUuid(currentDirectoryUUID);
-
-      if (!directory) break;
-
-      directory.size -= file.size;
-
-      await this.saveDirectory(directory);
-
-      currentDirectoryUUID = directory.parentDirectoryUUID;
-    }
-
-    this.emitter.emit("storage.remove_file", file);
+  /**
+   * @param directory
+   * @returns
+   */
+  public getFilesIn(directory: DirectoryEntity) {
+    return this.fileService.getFilesIn(directory);
   }
 
-  public async saveFile(file: FileEntity) {
-    const newFile = await this.filesRepository.save(file);
+  /**
+   * @param file
+   * @returns
+   */
+  public async createFile(
+    file: FileEntity,
+    destDirectory: DirectoryEntity | null = null
+  ) {
+    const newFile = await this.fileService.createFile(file, destDirectory);
 
-    let currentDirectoryUUID = file.parentDirectoryUUID;
-
-    while (currentDirectoryUUID) {
-      const directory = await this.getDirectoryByUuid(currentDirectoryUUID);
-
-      if (!directory) break;
-
-      directory.size += file.size;
-
-      await this.saveDirectory(directory);
-
-      currentDirectoryUUID = directory.parentDirectoryUUID;
-    }
-
-    this.emitter.emit("storage.add_file", newFile);
+    this.emitter.emit(StorageEventEnum.ON_FILE_ADDED, newFile);
 
     return newFile;
   }
 
-  /* public async getDirectoryByAbsolutePath(
-    absoluteDirPath: string
-  ): Promise<DirectoryEntity> {
-    const directory = await this.findOneDirectoryByAbsolutePath(
-      absoluteDirPath
-    );
+  /**
+   * @param file
+   * @param name
+   * @returns
+   */
+  public async renameFile(file: FileEntity, name: string) {
+    const updatedFile = await this.fileService.renameFile(file, name);
 
-    if (directory) return directory;
+    this.emitter.emit(StorageEventEnum.ON_FILE_RENAMED, updatedFile, file);
 
-    const absoluteRootPath = await this.config.getAbsoluteRootPath();
+    return updatedFile;
+  }
 
-    const dir = new DirectoryEntity();
+  /**
+   * @param file
+   * @param destDirectory
+   * @returns
+   */
+  public async moveFile(
+    file: FileEntity,
+    destDirectory: DirectoryEntity | null = null
+  ) {
+    const updatedFile = await this.fileService.moveFile(file, destDirectory);
 
-    dir.name = basename(absoluteDirPath);
-    dir.size = 0;
-    dir.absolutePath = absoluteDirPath;
-    dir.relativePath = dir.absolutePath.replace(absoluteRootPath, "");
+    this.emitter.emit(StorageEventEnum.ON_FILE_MOVED, updatedFile, file);
 
-    const parentDirectoryPath = dirname(dir.absolutePath);
-    const parentDirectory = await this.findOneDirectoryByAbsolutePath(
-      parentDirectoryPath
-    );
+    return updatedFile;
+  }
 
-    if (parentDirectory) {
-      dir.parentDirectoryUUID = parentDirectory.uuid;
+  /**
+   * @param uuid
+   * @returns
+   */
+  public async deleteFileByUuid(uuid: string) {
+    const deletedFile = await this.fileService.deleteFileByUuid(uuid);
 
-      await this.saveDirectory(parentDirectory);
-    } else if (parentDirectoryPath !== absoluteRootPath) {
-      const parentDirectory = await this.getDirectoryByAbsolutePath(
-        parentDirectoryPath
-      );
+    this.emitter.emit(StorageEventEnum.ON_DIR_REMOVED, deletedFile);
 
-      dir.parentDirectoryUUID = parentDirectory.uuid;
-    }
-
-    return this.saveDirectory(dir);
-  } */
+    return deletedFile;
+  }
 }
