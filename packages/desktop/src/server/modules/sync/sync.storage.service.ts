@@ -3,7 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
 import { InjectQueue, Queue } from "../queue";
 import { StorageEventEnum } from "../storage/storage.events";
-import { SyncWorkerProcessEnum, SYNC_QUEUE_NAME } from "./sync.constans";
+import { SyncWorkerProcessEnum, SYNC_QUEUE_NAME } from "./constants";
 import { SyncWorkerProcessData } from "./sync.worker";
 import { DirectoryEntity } from "@/server/db/entities/directory.entity";
 

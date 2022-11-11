@@ -1,11 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { readFileSync, writeFileSync } from "fs";
-import { resolve, join } from "path";
+import { resolve, join, sep } from "path";
 import { fromJSON, toJSON } from "@/server/utils/format";
 import {
   DEFAULT_CONFIG_NAME,
   DEFAULT_CONFIG_DIR_NAME,
-} from "./config.constans";
+  ROOT_RELATIVE_PATH,
+} from "./config.constants";
+import { accessSync } from "@/server/utils/fs";
 
 export interface Config {
   absoluteRootPath: string;
@@ -36,8 +38,7 @@ export class ConfigService {
       this.logger.log(`Creating initial config file...`, ConfigService.name);
 
       this.config = {
-        // absoluteRootPath: resolve(process.cwd(), DEFAULT_CONFIG_DIR_NAME),
-        absoluteRootPath: "C:\\Users\\Michail\\Downloads\\homecloud",
+        absoluteRootPath: resolve(process.cwd(), DEFAULT_CONFIG_DIR_NAME),
         absoluteTempPath: process.env.TEMP_DIST as string,
       };
 
@@ -86,7 +87,35 @@ export class ConfigService {
         `The root path and the given absolute path is not comparable: ${absoluteRootPath} ${absolutePath}`
       );
 
+    if (!relativePath.length) return ROOT_RELATIVE_PATH;
+
     return relativePath;
+  }
+
+  getAbsolutePathBy(relativePath: string): string | null {
+    const absoluteRootPath = this.getAbsoluteRootPath();
+
+    const absolutePath = join(absoluteRootPath, relativePath);
+
+    const isExists = accessSync(absolutePath);
+
+    if (!isExists) {
+      return null;
+    }
+
+    return absolutePath;
+  }
+
+  getAbsolutePathByOrFail(relativePath: string): string {
+    const absolutePath = this.getAbsolutePathBy(relativePath);
+
+    if (!absolutePath) {
+      throw new Error(
+        `The entity with the path does not exist: ${absolutePath}`
+      );
+    }
+
+    return absolutePath;
   }
 
   public getAbsoluteTempPath() {

@@ -1,13 +1,10 @@
 import { DirectoryEntity } from "@/server/db/entities/directory.entity";
+import { path } from "@ffmpeg-installer/ffmpeg";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, TreeRepository } from "typeorm";
+import { IsNull, Like, TreeRepository } from "typeorm";
 import { ConfigService } from "../config/config.service";
-import * as fs from "fs/promises";
-import { computeHash } from "@/server/utils/format/computeFileHash";
-import { FileEntity } from "@/server/db/entities/file.entity";
-import { join } from "path";
-import { MetadataEntity } from "@/server/db/entities/metadata.entity";
+import { sep } from "path";
 
 /**
  * @private
@@ -21,7 +18,6 @@ export class DirectoryService {
   ) {}
 
   /**
-   *  @param
    *  @returns count
    */
   public getDirectoriesCount(): Promise<number> {
@@ -29,8 +25,7 @@ export class DirectoryService {
   }
 
   /**
-   *
-   * @returns
+   * @returns directories
    */
   public getRootDirectories(): Promise<DirectoryEntity[]> {
     return this.directoryRepository.findBy({
@@ -50,60 +45,56 @@ export class DirectoryService {
   }
 
   /**
-   *  Returns directory of a certain hash.
-   *  @param hash
-   *  @returns directory or null
+   *  Returns directory of a certain uuid. Throw an error when a directory was not found.
+   *  @param uuid
+   *  @returns directory
    */
-  public getDirectoryByHash(hash: string): Promise<DirectoryEntity | null> {
+  public async getDirectoryByUuidOrFail(
+    uuid: string
+  ): Promise<DirectoryEntity> {
+    const directory = await this.getDirectoryByUuid(uuid);
+
+    if (!directory) throw new Error(`The directory was not found: ${uuid}`);
+
+    return directory;
+  }
+
+  /**
+   *  @param relativePath
+   *  @returns directory
+   */
+  public getDirectoryByRelativePath(
+    relativePath: string
+  ): Promise<DirectoryEntity | null> {
     return this.directoryRepository.findOneBy({
-      hash,
+      relativePath,
     });
   }
 
   /**
-   *  Returns directory of a certain metadata.
-   *  @param metadata
-   *  @returns directory or null
+   *  @param relativePath
+   *  @returns directory
    */
-  public getDirectoryByMetadata(
-    metadata: MetadataEntity
-  ): Promise<DirectoryEntity | null> {
-    const hash = computeHash(metadata.ino);
-    return this.getDirectoryByHash(hash);
+  public async getDirectoryByRelativePathOrFail(
+    relativePath: string
+  ): Promise<DirectoryEntity> {
+    const directory = await this.getDirectoryByRelativePath(relativePath);
+
+    if (!directory)
+      throw new Error(`The directory was not found: ${relativePath}`);
+
+    return directory;
   }
 
   /**
-   *
-   * @param absolutePath
+   * @param directory
    * @returns
    */
-  public async getDirectoryHashByAbsolutePath(
-    absolutePath: string
-  ): Promise<string> {
-    const stat = await fs.stat(absolutePath, { bigint: true });
-    return computeHash(stat.ino.toString());
-  }
-
-  /**
-   *  Returns directory of a certain absolute path.
-   *  @param absolutePath
-   *  @returns directory or null
-   */
-  public async getDirectoryByAbsolutePath(
-    absolutePath: string
-  ): Promise<DirectoryEntity | null> {
-    const hash = await this.getDirectoryHashByAbsolutePath(absolutePath);
-
-    return this.getDirectoryByHash(hash);
-  }
-
   public async getDirectoriesIn(
     directory: DirectoryEntity
   ): Promise<DirectoryEntity[]> {
     return this.directoryRepository.findBy({
-      parent: {
-        uuid: directory.uuid,
-      },
+      parentUuid: directory.uuid,
     });
   }
 
@@ -119,182 +110,42 @@ export class DirectoryService {
   }
 
   /**
-   *
-   * @param directory
-   * @returns
+   *  Returns descendants of the directory by path.
+   *  @param relativePath
+   *  @returns descendants
    */
-  private saveDirectory(directory: DirectoryEntity): Promise<DirectoryEntity> {
+  public getDescendantsByPath(
+    relativePath: string
+  ): Promise<DirectoryEntity[]> {
+    return this.directoryRepository.findBy({
+      relativePath: Like(`${relativePath}${sep}%`),
+    });
+  }
+
+  /**
+   * @param directory
+   * @returns The created directory
+   */
+  public saveDirectory(directory: DirectoryEntity): Promise<DirectoryEntity> {
     return this.directoryRepository.save(directory);
   }
 
   /**
-   *
    * @param directories
-   * @returns
+   * @returns The created directories
    */
-  private saveDirectories(
+  public saveDirectories(
     directories: DirectoryEntity[]
   ): Promise<DirectoryEntity[]> {
     return this.directoryRepository.save(directories);
   }
 
   /**
-   *
-   * @param directory
-   * @param destDirectory
-   * @returns
-   */
-  public async createDirectory(
-    directory: DirectoryEntity,
-    destDirectory: DirectoryEntity | null = null
-  ) {
-    const directoryClone = directory.clone();
-    directoryClone.parent = destDirectory;
-
-    const newDirectory = await this.saveDirectory(directoryClone);
-
-    /** TODO: Check name exists */
-
-    return newDirectory;
-  }
-
-  /**
-   *
-   * @param directory
-   * @param destDirectory
-   * @returns
-   */
-  public async renameDirectory(directory: DirectoryEntity, name: string) {
-    const directoryClone = directory.clone();
-    directoryClone.name = name;
-
-    const updatedDirectory = await this.saveDirectory(directoryClone);
-
-    /** TODO: Check name exists */
-
-    return updatedDirectory;
-  }
-
-  /**
-   * @param directory
-   * @param destDirectory
-   * @returns
-   */
-  public async moveDirectory(
-    directory: DirectoryEntity,
-    destDirectory: DirectoryEntity | null = null
-  ) {
-    await this.updateEntitySize(directory, "decrease");
-
-    const directoryClone = directory.clone();
-    directoryClone.parent = destDirectory;
-
-    const updatedDirectory = await this.saveDirectory(directoryClone);
-
-    /** TODO: Check name exists */
-
-    await this.updateEntitySize(updatedDirectory, "increase");
-
-    return updatedDirectory;
-  }
-
-  /**
-   *
    * @param uuid
    */
-  public async deleteDirectoryByUuid(uuid: string) {
-    const foundDirectory = await this.getDirectoryByUuid(uuid);
-
-    if (!foundDirectory)
-      throw new Error(`The directory was not found: ${uuid}`);
-
-    await this.updateEntitySize(foundDirectory, "decrease");
-
+  public async deleteDirectoryByUuid(uuid: string): Promise<void> {
     await this.directoryRepository.delete({
       uuid,
     });
-
-    return foundDirectory;
-  }
-
-  /**
-   *
-   * @param entity
-   * @param kind
-   * @returns
-   */
-  public async updateEntitySize<TEntity extends FileEntity | DirectoryEntity>(
-    entity: TEntity,
-    kind: "increase" | "decrease"
-  ) {
-    let directory: DirectoryEntity | null = null;
-
-    if (entity instanceof FileEntity) {
-      /* in the root  */
-      if (!entity.directoryUuid) return;
-
-      directory = await this.getDirectoryByUuid(entity.directoryUuid);
-
-      if (!directory)
-        throw new Error(`The directory was not found: ${entity.directoryUuid}`);
-    } else if (entity instanceof DirectoryEntity) {
-      /* in the root  */
-      if (!entity.parent) return;
-
-      directory = entity;
-    } else {
-      throw new Error(
-        `The given entity is not FileEntity or DirectoryEntity: ${typeof entity}`
-      );
-    }
-
-    const ancestors = await this.getAncestorsDirectory(directory);
-
-    for (const ancestor of ancestors) {
-      if (kind === "increase") {
-        ancestor.size += entity.size;
-      } else if (kind === "decrease") {
-        ancestor.size -= entity.size;
-      }
-    }
-
-    await this.saveDirectories(ancestors);
-  }
-
-  public async getAbsolutePathByEntity(
-    entity: FileEntity | DirectoryEntity
-  ): Promise<string> {
-    const absoluteRootPath = this.config.getAbsoluteRootPath();
-    let directory: DirectoryEntity | null = null;
-
-    if (entity instanceof FileEntity) {
-      /** in the root  */
-      if (!entity.directoryUuid) return absoluteRootPath;
-
-      directory = await this.getDirectoryByUuid(entity.directoryUuid);
-
-      if (!directory)
-        throw new Error(`The directory was not found: ${entity.directoryUuid}`);
-    } else if (entity instanceof DirectoryEntity) {
-      /** in the root  */
-      if (!entity.parent) return absoluteRootPath;
-
-      directory = entity;
-    } else {
-      throw new Error(
-        `The given entity is not FileEntity or DirectoryEntity: ${typeof entity}`
-      );
-    }
-
-    const ancestors = await this.getAncestorsDirectory(directory);
-
-    return join(
-      absoluteRootPath,
-      [
-        ...ancestors.map(a => a.name),
-        directory.name,
-        entity instanceof FileEntity && entity.name,
-      ].join("/")
-    );
   }
 }

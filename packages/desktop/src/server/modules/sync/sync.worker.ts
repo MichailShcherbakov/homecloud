@@ -11,15 +11,15 @@ import {
   Processor,
 } from "../queue";
 import { Logger } from "@nestjs/common";
-import { SyncWorkerProcessEnum, SYNC_QUEUE_NAME } from "./sync.constans";
+import { SyncWorkerProcessEnum, SYNC_QUEUE_NAME } from "./constants";
 import { computeFileHash } from "@/server/utils/fs/computeFileHash";
-import { join, basename } from "path";
 import { FileSystemService } from "../file-system/file-system.service";
 import { toJSON } from "@/server/utils/format";
-import { FileService } from "../storage/file.service";
-import { DirectoryService } from "../storage/directory.service";
-import { computeHash } from "@/server/utils/format/computeFileHash";
 import { MetadataEntity } from "@/server/db/entities/metadata.entity";
+import { StorageManager } from "../storage/storage.manager";
+import { ROOT_RELATIVE_PATH } from "../config/config.constants";
+import { ReferenceService } from "../storage/reference.service";
+import { IEntityInfo } from "@/server/utils/getFileInfo";
 
 export interface ISyncWorkerProcessData {
   kind: string;
@@ -27,7 +27,10 @@ export interface ISyncWorkerProcessData {
 
 export interface SyncWorkerProcessDataFromFS extends ISyncWorkerProcessData {
   kind: "fs";
-  metadata: MetadataEntity;
+
+  metadata: Omit<MetadataEntity, "getInfo">;
+  metadataInfo: IEntityInfo;
+
   toAbsolutePath: string;
   fromAbsolutePath?: string;
 }
@@ -49,8 +52,8 @@ export class SyncWorker {
   constructor(
     private readonly logger: Logger,
     private readonly config: ConfigService,
-    private readonly fileService: FileService,
-    private readonly directoryService: DirectoryService,
+    private readonly storage: StorageManager,
+    private readonly referenceService: ReferenceService,
     private readonly fs: FileSystemService
   ) {}
 
@@ -65,7 +68,7 @@ export class SyncWorker {
 
       const absoluteRootPath = this.config.getAbsoluteRootPath();
 
-      const absoluteTempPath = join(
+      const absoluteTempPath = this.fs.join(
         this.config.getAbsoluteTempPath(),
         file.uuid
       );
@@ -73,15 +76,13 @@ export class SyncWorker {
       let absoluteDestPath = absoluteRootPath;
 
       if (file.directoryUuid) {
-        const directory = await this.directoryService.getDirectoryByUuid(
+        const directory = await this.storage.getDirectoryByUuidOrFail(
           file.directoryUuid
         );
 
-        if (!directory)
-          throw new Error(`The directory was not found: ${file.directoryUuid}`);
-
-        absoluteDestPath = await this.directoryService.getAbsolutePathByEntity(
-          directory
+        absoluteDestPath = this.fs.join(
+          absoluteRootPath,
+          directory.relativePath
         );
       }
 
@@ -91,35 +92,26 @@ export class SyncWorker {
     }
 
     if (data.kind === "fs") {
-      const { toAbsolutePath } = data;
+      const { metadata, metadataInfo } = data;
 
-      const absoluteRootPath = this.config.getAbsoluteRootPath();
-
-      const fileInfo = await this.fs.getFileInfo(toAbsolutePath);
-
-      if (!fileInfo)
-        throw new Error(`Failed to get file info: ${toAbsolutePath}`);
+      const relativePath = this.config.getRelativePathBy(
+        metadataInfo.absoluteDirectoryPath
+      );
 
       const newFile = new FileEntity();
-      newFile.name = fileInfo.name;
-      newFile.hash = await computeFileHash(toAbsolutePath);
-      newFile.size = fileInfo.size;
+      newFile.name = metadataInfo.name;
+      newFile.hash = await computeFileHash(metadata.path);
+      newFile.size = metadataInfo.size;
 
-      if (fileInfo.absoluteDirectoryPath === absoluteRootPath) {
-        return this.fileService.createFile(newFile);
+      if (relativePath === ROOT_RELATIVE_PATH) {
+        return this.storage.createFile(newFile);
       }
 
-      const destDirectory =
-        await this.directoryService.getDirectoryByAbsolutePath(
-          fileInfo.absoluteDirectoryPath
-        );
+      const destDirectory = await this.storage.getDirectoryByRelativePathOrFail(
+        relativePath
+      );
 
-      if (!destDirectory)
-        throw new Error(
-          `The parent directory was not found: ${fileInfo.absoluteDirectoryPath}`
-        );
-
-      return this.fileService.createFile(newFile, destDirectory);
+      return this.storage.createFile(newFile, destDirectory);
     }
 
     throw new Error(`Unknown kind: ${toJSON(data)}`);
@@ -128,14 +120,14 @@ export class SyncWorker {
   @Process(SyncWorkerProcessEnum.REMOVE_FILE)
   async removeFile(
     job: Job<SyncWorkerProcessData<FileEntity>>
-  ): Promise<FileEntity> {
+  ): Promise<FileEntity | null> {
     const { data } = job;
 
     if (data.kind === "storage") {
       const { entity: file } = data;
 
-      const absolutePath = await this.directoryService.getAbsolutePathByEntity(
-        file
+      const absolutePath = this.config.getAbsolutePathByOrFail(
+        file.relativePath
       );
 
       await this.fs.rm(absolutePath, {
@@ -147,18 +139,18 @@ export class SyncWorker {
     }
 
     if (data.kind === "fs") {
-      const { toAbsolutePath } = data;
+      const { metadata } = data;
 
-      const foundFile = await this.fileService.getFileByAbsolutePath(
-        toAbsolutePath
+      const fileRef = await this.referenceService.getRefByMetadataOrFail(
+        metadata as MetadataEntity
       );
 
-      if (!foundFile)
-        throw new Error(`The file was not found: ${toAbsolutePath}`);
+      if (!fileRef.file)
+        throw new Error(`The file was not found: ${fileRef.fileUuid}`);
 
-      await this.fileService.deleteFileByUuid(foundFile.uuid);
+      await this.storage.deleteFileByUuid(fileRef.file.uuid);
 
-      return foundFile;
+      return fileRef.file;
     }
 
     throw new Error(`Unknown kind`);
@@ -173,8 +165,9 @@ export class SyncWorker {
     if (data.kind === "storage") {
       const { entity: directory } = data;
 
-      const absolutePath = await this.directoryService.getAbsolutePathByEntity(
-        directory
+      const absolutePath = this.fs.join(
+        this.config.getAbsoluteRootPath(),
+        directory.relativePath
       );
 
       await this.fs.mkdir(absolutePath);
@@ -183,37 +176,38 @@ export class SyncWorker {
     }
 
     if (data.kind === "fs") {
-      const { toAbsolutePath } = data;
+      const { metadata, metadataInfo } = data;
 
-      const absoluteRootPath = this.config.getAbsoluteRootPath();
-
-      const directoryInfo = await this.fs.getDirectoryInfo(toAbsolutePath);
-
-      if (!directoryInfo)
-        throw new Error(`Failed to get directory info: ${toAbsolutePath}`);
+      const relativePath = this.config.getRelativePathBy(
+        metadataInfo.absoluteDirectoryPath
+      );
 
       const newDirectory = new DirectoryEntity();
-      newDirectory.name = directoryInfo.name;
-      newDirectory.hash = await computeHash(directoryInfo.ino.toString());
-      newDirectory.size = directoryInfo.size;
+      newDirectory.name = metadataInfo.name;
+      newDirectory.size = metadataInfo.size;
 
-      if (directoryInfo.absoluteDirectoryPath === absoluteRootPath) {
-        return this.directoryService.createDirectory(newDirectory);
+      if (relativePath === ROOT_RELATIVE_PATH) {
+        const directory = await this.storage.createDirectory(newDirectory);
+
+        await this.referenceService.createRef(
+          directory,
+          metadata as MetadataEntity
+        );
+
+        return directory;
       }
 
       const parentDirectory =
-        await this.directoryService.getDirectoryByAbsolutePath(
-          directoryInfo.absoluteDirectoryPath
-        );
+        await this.storage.getDirectoryByRelativePathOrFail(relativePath);
 
-      if (!parentDirectory)
-        throw new Error(
-          `The parent directory was not found: ${directoryInfo.absoluteDirectoryPath}`
-        );
-
-      return this.directoryService.createDirectory(
+      const directory = await this.storage.createDirectory(
         newDirectory,
         parentDirectory
+      );
+
+      await this.referenceService.createRef(
+        directory,
+        metadata as MetadataEntity
       );
     }
 
@@ -231,32 +225,31 @@ export class SyncWorker {
 
       if (!oldDirectory) throw new Error(`The old directory is undefined`);
 
-      const absolutePath = await this.directoryService.getAbsolutePathByEntity(
-        directory
+      const newAbsolutePath = this.fs.join(
+        this.config.getAbsoluteRootPath(),
+        directory.relativePath
       );
 
-      const oldAbsolutePath =
-        await this.directoryService.getAbsolutePathByEntity(oldDirectory);
+      const oldAbsolutePath = this.config.getAbsolutePathByOrFail(
+        oldDirectory.relativePath
+      );
 
-      await this.fs.rename(oldAbsolutePath, absolutePath);
+      await this.fs.rename(oldAbsolutePath, newAbsolutePath);
 
       return directory;
     }
 
     if (data.kind === "fs") {
-      const { metadata } = data;
+      const { metadata, metadataInfo } = data;
 
-      const directory = await this.directoryService.getDirectoryByMetadata(
-        metadata
+      const { directory } = await this.referenceService.getRefByMetadataOrFail(
+        metadata as MetadataEntity
       );
 
       if (!directory)
         throw new Error(`The directory was not found: ${toJSON(metadata)}`);
 
-      return this.directoryService.renameDirectory(
-        directory,
-        basename(metadata.path)
-      );
+      return this.storage.renameDirectory(directory, metadataInfo.name);
     }
 
     throw new Error(`Unknown kind`);
@@ -273,54 +266,43 @@ export class SyncWorker {
 
       if (!oldDirectory) throw new Error(`The old directory is undefined`);
 
-      const [absolutePath, oldAbsolutePath] = await Promise.all([
-        this.directoryService.getAbsolutePathByEntity(directory),
-        this.directoryService.getAbsolutePathByEntity(oldDirectory),
-      ]);
+      const newAbsolutePath = this.fs.join(
+        this.config.getAbsoluteRootPath(),
+        directory.relativePath
+      );
 
-      await this.fs.rename(oldAbsolutePath, absolutePath);
+      const oldAbsolutePath = this.config.getAbsolutePathByOrFail(
+        oldDirectory.relativePath
+      );
+
+      await this.fs.rename(oldAbsolutePath, newAbsolutePath);
 
       return directory;
     }
 
     if (data.kind === "fs") {
-      const { toAbsolutePath, metadata } = data;
+      const { metadata, metadataInfo } = data;
 
-      const absoluteRootPath = this.config.getAbsoluteRootPath();
+      const destDirectoryRelativePath = this.config.getRelativePathBy(
+        metadataInfo.absoluteDirectoryPath
+      );
 
-      const [directory, directoryInfo] = await Promise.all([
-        this.directoryService.getDirectoryByMetadata(metadata),
-        this.fs.getDirectoryInfo(toAbsolutePath),
-      ]);
+      const { directory } = await this.referenceService.getRefByMetadataOrFail(
+        metadata as MetadataEntity
+      );
 
       if (!directory)
-        throw new Error(`The directory was not found: ${toAbsolutePath}`);
+        throw new Error(`The directory was not found: ${toJSON(metadata)}`);
 
-      if (!directoryInfo)
-        throw new Error(`Failed to get directory info: ${toAbsolutePath}`);
-
-      if (directoryInfo.absoluteDirectoryPath === absoluteRootPath) {
-        return this.directoryService.moveDirectory(directory);
+      if (destDirectoryRelativePath === ROOT_RELATIVE_PATH) {
+        return this.storage.moveDirectory(directory);
       }
-      const destDirectoryMetadata = await this.fs.getMetadataByPath(
-        directoryInfo.absoluteDirectoryPath
+
+      const destDirectory = await this.storage.getDirectoryByRelativePathOrFail(
+        destDirectoryRelativePath
       );
 
-      if (!destDirectoryMetadata)
-        throw new Error(
-          `The dest directory metadata was not found: ${directoryInfo.absoluteDirectoryPath}`
-        );
-
-      const destDirectory = await this.directoryService.getDirectoryByMetadata(
-        destDirectoryMetadata
-      );
-
-      if (!destDirectory)
-        throw new Error(
-          `The dest directory was not found: ${toJSON(destDirectoryMetadata)}`
-        );
-
-      return this.directoryService.moveDirectory(directory, destDirectory);
+      return this.storage.moveDirectory(directory, destDirectory);
     }
 
     throw new Error(`Unknown kind`);
@@ -335,8 +317,8 @@ export class SyncWorker {
     if (data.kind === "storage") {
       const { entity: directory } = data;
 
-      const absolutePath = await this.directoryService.getAbsolutePathByEntity(
-        directory
+      const absolutePath = await this.config.getAbsolutePathByOrFail(
+        directory.relativePath
       );
 
       await this.fs.rm(absolutePath, {
@@ -350,17 +332,17 @@ export class SyncWorker {
     if (data.kind === "fs") {
       const { metadata } = data;
 
-      const foundDirectory = await this.directoryService.getDirectoryByMetadata(
-        metadata
+      const directoryRef = await this.referenceService.getRefByMetadata(
+        metadata as MetadataEntity
       );
 
       // In the file system, root directory delete firstly, and then it's descendants,
       // so it's normal that some directory will not to be found
-      if (!foundDirectory) return null;
+      if (!directoryRef?.directory?.uuid) return null;
 
-      await this.directoryService.deleteDirectoryByUuid(foundDirectory.uuid);
+      await this.storage.deleteDirectoryByUuid(directoryRef.directory.uuid);
 
-      return foundDirectory;
+      return directoryRef.directory;
     }
 
     throw new Error(`Unknown kind`);

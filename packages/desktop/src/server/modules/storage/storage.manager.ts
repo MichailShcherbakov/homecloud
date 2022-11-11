@@ -1,34 +1,34 @@
 import { DirectoryEntity } from "@/server/db/entities/directory.entity";
 import { FileEntity } from "@/server/db/entities/file.entity";
 import { Injectable } from "@nestjs/common";
-import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ConfigService } from "../config/config.service";
-import { StorageEventEnum } from "./storage.events";
 import { FileService } from "./file.service";
 import { DirectoryService } from "./directory.service";
+import { join } from "path";
+import { ROOT_RELATIVE_PATH } from "../config/config.constants";
 
+/**
+ * @private
+ */
 @Injectable()
 export class StorageManager {
   constructor(
     private readonly config: ConfigService,
-    private readonly emitter: EventEmitter2,
     private readonly fileService: FileService,
     private readonly directoryService: DirectoryService
   ) {}
 
   /**
-   * @param
    * @returns
    */
-  public getRootDirectories() {
+  public getRootDirectories(): Promise<DirectoryEntity[]> {
     return this.directoryService.getRootDirectories();
   }
 
   /**
-   * @param
    * @returns
    */
-  public getDirectoriesCount() {
+  public getDirectoriesCount(): Promise<number> {
     return this.directoryService.getDirectoriesCount();
   }
 
@@ -36,23 +36,48 @@ export class StorageManager {
    * @param uuid
    * @returns
    */
-  public getDirectoryByUuid(uuid: string) {
+  public getDirectoryByUuid(uuid: string): Promise<DirectoryEntity | null> {
     return this.directoryService.getDirectoryByUuid(uuid);
   }
 
   /**
-   * @param absolutePath
-   * @returns
+   *  Returns directory of a certain uuid. Throw an error when a directory was not found.
+   *  @param uuid
+   *  @returns directory
    */
-  public async getDirectoryByAbsolutePath(absolutePath: string) {
-    return this.directoryService.getDirectoryByAbsolutePath(absolutePath);
+  public getDirectoryByUuidOrFail(uuid: string): Promise<DirectoryEntity> {
+    return this.directoryService.getDirectoryByUuidOrFail(uuid);
+  }
+
+  /**
+   * Returns directory of a certain relative path
+   * @param relativePath
+   * @returns directory or null
+   */
+  public async getDirectoryByRelativePath(
+    relativePath: string
+  ): Promise<DirectoryEntity | null> {
+    return this.directoryService.getDirectoryByRelativePath(relativePath);
+  }
+
+  /**
+   * Returns directory of a certain relative path. Throw an error when a directory was not found.
+   * @param relativePath
+   * @returns directory
+   */
+  public async getDirectoryByRelativePathOrFail(
+    relativePath: string
+  ): Promise<DirectoryEntity> {
+    return this.directoryService.getDirectoryByRelativePathOrFail(relativePath);
   }
 
   /**
    * @param directory
    * @returns
    */
-  public getDirectoriesIn(directory: DirectoryEntity) {
+  public getDirectoriesIn(
+    directory: DirectoryEntity
+  ): Promise<DirectoryEntity[]> {
     return this.directoryService.getDirectoriesIn(directory);
   }
 
@@ -60,7 +85,9 @@ export class StorageManager {
    * @param directory
    * @returns
    */
-  public getAncestorsDirectory(directory: DirectoryEntity) {
+  public getAncestorsDirectory(
+    directory: DirectoryEntity
+  ): Promise<DirectoryEntity[]> {
     return this.directoryService.getAncestorsDirectory(directory);
   }
 
@@ -69,17 +96,19 @@ export class StorageManager {
    * @returns
    */
   public async createDirectory(
-    directory: DirectoryEntity,
+    directory: Pick<DirectoryEntity, "name" | "size" | "clone">,
     destDirectory: DirectoryEntity | null = null
-  ) {
-    const newDirectory = await this.directoryService.createDirectory(
-      directory,
-      destDirectory
+  ): Promise<DirectoryEntity> {
+    const directoryClone = directory.clone();
+    directoryClone.parent =
+      destDirectory; /* needs to be above of the function of getting relative path */
+    directoryClone.relativePath = await this.getRelativePathByEntity(
+      directoryClone
     );
 
-    this.emitter.emit(StorageEventEnum.ON_DIR_ADDED, newDirectory);
+    /** TODO: Check name exists */
 
-    return newDirectory;
+    return this.directoryService.saveDirectory(directoryClone);
   }
 
   /**
@@ -87,17 +116,23 @@ export class StorageManager {
    * @param name
    * @returns
    */
-  public async renameDirectory(directory: DirectoryEntity, name: string) {
-    const updatedDirectory = await this.directoryService.renameDirectory(
-      directory,
-      name
+  public async renameDirectory(
+    directory: DirectoryEntity,
+    name: string
+  ): Promise<DirectoryEntity> {
+    const directoryClone = directory.clone();
+    directoryClone.name = name;
+    directoryClone.relativePath = await this.getRelativePathByEntity(
+      directoryClone
     );
 
-    this.emitter.emit(
-      StorageEventEnum.ON_DIR_RENAMED,
-      updatedDirectory,
-      directory
+    /** TODO: Check name exists */
+
+    const updatedDirectory = await this.directoryService.saveDirectory(
+      directoryClone
     );
+
+    await this.updateEntityPath(updatedDirectory, directory);
 
     return updatedDirectory;
   }
@@ -110,72 +145,96 @@ export class StorageManager {
   public async moveDirectory(
     directory: DirectoryEntity,
     destDirectory: DirectoryEntity | null = null
-  ) {
-    const updatedDirectory = await this.directoryService.moveDirectory(
-      directory,
-      destDirectory
+  ): Promise<DirectoryEntity> {
+    const directoryClone = directory.clone();
+    directoryClone.parent = destDirectory;
+    directoryClone.relativePath = await this.getRelativePathByEntity(
+      directoryClone
     );
 
-    this.emitter.emit(
-      StorageEventEnum.ON_DIR_MOVED,
-      updatedDirectory,
-      directory
+    const updatedDirectory = await this.directoryService.saveDirectory(
+      directoryClone
     );
+
+    /** TODO: Check name exists */
+
+    await Promise.all([
+      this.updateEntitySize(directory, "decrease"),
+      this.updateEntitySize(updatedDirectory, "increase"),
+      this.updateEntityPath(updatedDirectory, directory),
+    ]);
 
     return updatedDirectory;
   }
 
   /**
-   *
    * @param uuid
    */
-  public async deleteDirectoryByUuid(uuid: string) {
-    const deletedDirectory = await this.directoryService.deleteDirectoryByUuid(
-      uuid
-    );
+  public async deleteDirectoryByUuid(uuid: string): Promise<DirectoryEntity> {
+    const directory = await this.getDirectoryByUuidOrFail(uuid);
 
-    this.emitter.emit(StorageEventEnum.ON_DIR_REMOVED, deletedDirectory);
+    await this.updateEntitySize(directory, "decrease");
 
-    return deletedDirectory;
+    await this.directoryService.deleteDirectoryByUuid(uuid);
+
+    return directory;
   }
 
   /**
-   * @param
-   * @returns
+   * @returns count
    */
-  public getFilesCount() {
+  public getFilesCount(): Promise<number> {
     return this.fileService.getFilesCount();
   }
 
   /**
-   * @param
-   * @returns
+   * @returns Array of files
    */
-  public getRootFiles() {
+  public getRootFiles(): Promise<FileEntity[]> {
     return this.fileService.getRootFiles();
   }
 
   /**
    * @param uuid
-   * @returns
+   * @returns file or null
    */
-  public getFileByUuid(uuid: string) {
+  public getFileByUuid(uuid: string): Promise<FileEntity | null> {
     return this.fileService.getFileByUuid(uuid);
   }
 
   /**
-   * @param absolutePath
-   * @returns
+   * @param uuid
+   * @returns file
    */
-  public async getFileByAbsolutePath(absolutePath: string) {
-    return this.fileService.getFileByAbsolutePath(absolutePath);
+  public getFileByUuidOrFail(uuid: string): Promise<FileEntity> {
+    return this.fileService.getFileByUuidOrFail(uuid);
+  }
+
+  /**
+   * @param absolutePath
+   * @returns file or null
+   */
+  public async getFileByRelativePath(
+    absolutePath: string
+  ): Promise<FileEntity | null> {
+    return this.fileService.getFileByRelativePath(absolutePath);
+  }
+
+  /**
+   * @param absolutePath
+   * @returns file
+   */
+  public async getFileByRelativePathOrFail(
+    absolutePath: string
+  ): Promise<FileEntity> {
+    return this.fileService.getFileByRelativePathOrFail(absolutePath);
   }
 
   /**
    * @param directory
-   * @returns
+   * @returns Array of files
    */
-  public getFilesIn(directory: DirectoryEntity) {
+  public getFilesIn(directory: DirectoryEntity): Promise<FileEntity[]> {
     return this.fileService.getFilesIn(directory);
   }
 
@@ -184,12 +243,18 @@ export class StorageManager {
    * @returns
    */
   public async createFile(
-    file: FileEntity,
+    file: Pick<FileEntity, "name" | "size" | "hash" | "clone">,
     destDirectory: DirectoryEntity | null = null
-  ) {
-    const newFile = await this.fileService.createFile(file, destDirectory);
+  ): Promise<FileEntity> {
+    const fileClone = file.clone();
+    fileClone.directory = destDirectory;
+    fileClone.relativePath = await this.getRelativePathByEntity(fileClone);
 
-    this.emitter.emit(StorageEventEnum.ON_FILE_ADDED, newFile);
+    /** TODO: Check name exists */
+
+    const newFile = await this.fileService.saveFile(fileClone);
+
+    await this.updateEntitySize(newFile, "increase");
 
     return newFile;
   }
@@ -199,10 +264,14 @@ export class StorageManager {
    * @param name
    * @returns
    */
-  public async renameFile(file: FileEntity, name: string) {
-    const updatedFile = await this.fileService.renameFile(file, name);
+  public async renameFile(file: FileEntity, name: string): Promise<FileEntity> {
+    const fileClone = file.clone();
+    fileClone.name = name;
+    fileClone.relativePath = await this.getRelativePathByEntity(fileClone);
 
-    this.emitter.emit(StorageEventEnum.ON_FILE_RENAMED, updatedFile, file);
+    /** TODO: Check name exists */
+
+    const updatedFile = await this.fileService.saveFile(fileClone);
 
     return updatedFile;
   }
@@ -215,10 +284,18 @@ export class StorageManager {
   public async moveFile(
     file: FileEntity,
     destDirectory: DirectoryEntity | null = null
-  ) {
-    const updatedFile = await this.fileService.moveFile(file, destDirectory);
+  ): Promise<FileEntity> {
+    await this.updateEntitySize(file, "decrease");
 
-    this.emitter.emit(StorageEventEnum.ON_FILE_MOVED, updatedFile, file);
+    const fileClone = file.clone();
+    fileClone.directory = destDirectory;
+    fileClone.relativePath = await this.getRelativePathByEntity(fileClone);
+
+    /** TODO: Check name exists */
+
+    const updatedFile = await this.fileService.saveFile(fileClone);
+
+    await this.updateEntitySize(updatedFile, "increase");
 
     return updatedFile;
   }
@@ -227,11 +304,121 @@ export class StorageManager {
    * @param uuid
    * @returns
    */
-  public async deleteFileByUuid(uuid: string) {
-    const deletedFile = await this.fileService.deleteFileByUuid(uuid);
+  public async deleteFileByUuid(uuid: string): Promise<FileEntity> {
+    const foundFile = await this.getFileByUuidOrFail(uuid);
 
-    this.emitter.emit(StorageEventEnum.ON_DIR_REMOVED, deletedFile);
+    await this.updateEntitySize(foundFile, "decrease");
 
-    return deletedFile;
+    await this.fileService.deleteFileByUuid(uuid);
+
+    return foundFile;
+  }
+
+  /**
+   * @private
+   * @param entity
+   * @returns
+   */
+  private async getRelativePathByEntity<
+    TEntity extends FileEntity | DirectoryEntity
+  >(entity: TEntity): Promise<string> {
+    let directoryUuid: string | null = null;
+
+    if (entity instanceof FileEntity) {
+      directoryUuid = entity.directory?.uuid ?? entity.directoryUuid;
+    } else if (entity instanceof DirectoryEntity) {
+      directoryUuid = entity.parent?.uuid ?? entity.parentUuid;
+    } else {
+      throw new Error(
+        `The given entity is not FileEntity or DirectoryEntity: ${typeof entity}`
+      );
+    }
+
+    if (directoryUuid) {
+      const parentDirectory = await this.getDirectoryByUuidOrFail(
+        directoryUuid
+      );
+      return join(parentDirectory.relativePath, entity.name);
+    }
+
+    return join(ROOT_RELATIVE_PATH, entity.name);
+  }
+
+  /**
+   * @private
+   * @param entity
+   * @returns
+   */
+  private async getParentDirectoryByEntity<
+    TEntity extends FileEntity | DirectoryEntity
+  >(entity: TEntity): Promise<DirectoryEntity | null> {
+    let directoryUuid: string | null = null;
+
+    if (entity instanceof FileEntity) {
+      directoryUuid = entity.directoryUuid;
+    } else if (entity instanceof DirectoryEntity) {
+      directoryUuid = entity.parentUuid;
+    } else {
+      throw new Error(
+        `The given entity is not FileEntity or DirectoryEntity: ${typeof entity}`
+      );
+    }
+
+    if (!directoryUuid) return null;
+
+    return this.getDirectoryByUuidOrFail(directoryUuid);
+  }
+
+  /**
+   * @private
+   * @param entity
+   * @param kind increase | decrease
+   */
+  private async updateEntitySize<TEntity extends FileEntity | DirectoryEntity>(
+    entity: TEntity,
+    kind: "increase" | "decrease"
+  ): Promise<void> {
+    const directory = await this.getParentDirectoryByEntity(entity);
+
+    /* in the root */
+    if (!directory) return;
+
+    const ancestors = await this.getAncestorsDirectory(directory);
+
+    for (const ancestor of ancestors) {
+      if (kind === "increase") {
+        ancestor.size += entity.size;
+      } else if (kind === "decrease") {
+        ancestor.size -= entity.size;
+      }
+    }
+
+    await this.directoryService.saveDirectories(ancestors);
+  }
+
+  /**
+   * @private
+   * @param entity
+   */
+  private async updateEntityPath<TEntity extends FileEntity | DirectoryEntity>(
+    newEntity: TEntity,
+    oldEntity: TEntity
+  ): Promise<void> {
+    if (oldEntity instanceof FileEntity) return;
+
+    const descendants = await this.directoryService.getDescendantsByPath(
+      oldEntity.relativePath
+    );
+
+    await this.directoryService.saveDirectories(
+      descendants.map(directory => {
+        const directoryClone = directory.clone();
+        directoryClone.relativePath = join(
+          newEntity.relativePath,
+          directoryClone.relativePath.replace(oldEntity.relativePath, "")
+        );
+        return directoryClone;
+      })
+    );
   }
 }

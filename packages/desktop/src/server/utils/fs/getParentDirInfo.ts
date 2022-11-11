@@ -1,4 +1,4 @@
-import { basename } from "path";
+import { basename, sep } from "path";
 
 export interface DirInfo {
   path: string;
@@ -6,7 +6,7 @@ export interface DirInfo {
 }
 
 export function getParentDirInfo(path: string): DirInfo {
-  const dirPath = path.split("\\").slice(0, -1).join("\\");
+  const dirPath = path.split(sep).slice(0, -1).join(sep);
 
   const dirName = basename(dirPath);
 

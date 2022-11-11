@@ -6,6 +6,8 @@
     "moduleResolution": "Node",
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     "paths": {
       "@/*": ["src/*"],
       "@public/*": ["public/*"],

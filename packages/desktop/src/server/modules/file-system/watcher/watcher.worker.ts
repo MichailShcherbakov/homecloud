@@ -1,6 +1,5 @@
 import { Logger } from "@nestjs/common";
 import watcher from "@parcel/watcher";
-import { ConfigService } from "../../config/config.service";
 import { Job, OnJobFailed, Process, Processor } from "../../queue";
 import { MetadataService } from "./metadata.service";
 import { MOVE_EVENT_DELAY, WATCHER_QUEUE_NAME } from "./watcher.constants";
@@ -42,6 +41,8 @@ export interface WatcherWorkerJobData {
   shouldEmitEvents?: boolean;
 }
 
+export type Action = CreateAction | RenameAction | MoveAction | DeleteAction;
+
 @Processor(WATCHER_QUEUE_NAME)
 export class WatcherWorker {
   private readonly moveSignals: Map<string, () => string> = new Map<
@@ -51,15 +52,12 @@ export class WatcherWorker {
 
   constructor(
     private readonly logger: Logger,
-    private readonly config: ConfigService,
     private readonly metadataService: MetadataService
   ) {}
 
   @Process()
   async onFileSystemEvent(job: Job<WatcherWorkerJobData>): Promise<void> {
     const { watcher, events, shouldEmitEvents } = job.data;
-
-    type Action = CreateAction | RenameAction | MoveAction | DeleteAction;
 
     const createEvents = events.filter(e => e.type === "create");
     const deleteEvents = events.filter(e => e.type === "delete");
@@ -260,6 +258,8 @@ export class WatcherWorker {
         });
       } else if (action.kind === "move" || action.kind === "rename") {
         const metadata = await this.metadataService.get(action.fromPath);
+
+        console.log(action);
 
         if (!metadata)
           throw new Error(`The metadata was not found: ${action.fromPath}`);

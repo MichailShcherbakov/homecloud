@@ -86,7 +86,7 @@ export class StorageService {
     ];
   }
 
-  async getGlobaFilePath(uuid: string): Promise<string> {
+  async getGlobalFilePath(uuid: string): Promise<string> {
     /*  const rootPath = this.config.getAbsoluteRootPath();
     const file = await this.storageManager.getFileByUuid(uuid);
 

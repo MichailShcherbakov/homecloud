@@ -14,8 +14,8 @@ export class DirectoryEntity extends IEntity {
   @Column()
   size: number;
 
-  @Column({ type: "varchar" })
-  hash: string;
+  @Column()
+  relativePath: string;
 
   @TreeChildren()
   children: DirectoryEntity[];

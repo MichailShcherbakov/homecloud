@@ -14,7 +14,7 @@ import { access } from "@/server/utils/fs";
 import { hide } from "hidefile";
 import { BigIntStats } from "fs";
 import { DirectoryInfo, FileInfo } from "@/server/utils/getFileInfo";
-import { parse, basename } from "path";
+import { join, parse, basename, sep } from "path";
 import { MetadataEntity } from "@/server/db/entities/metadata.entity";
 
 @Injectable()
@@ -365,7 +365,7 @@ export class FileSystemService implements OnModuleInit, OnModuleDestroy {
 
     if (!stat.isDirectory()) return null;
 
-    const dir = absolutePath.split("\\").slice(0, -1).join("\\");
+    const dir = absolutePath.split(sep).slice(0, -1).join(sep);
 
     const name = basename(absolutePath);
 
@@ -375,6 +375,10 @@ export class FileSystemService implements OnModuleInit, OnModuleDestroy {
       size: Number(stat.size),
       absoluteDirectoryPath: dir,
     };
+  }
+
+  public join(...paths: string[]): string {
+    return join(...paths);
   }
 
   public getMetadataByPath(

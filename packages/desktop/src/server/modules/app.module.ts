@@ -1,7 +1,7 @@
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Logger, Module } from "@nestjs/common";
 import { EventEmitterModule } from "@nestjs/event-emitter";
-import { AppContoller } from "./app.controller";
+import { AppController } from "./app.controller";
 import { ConverterModule } from "./converter";
 import { StorageModule } from "./storage";
 import { ConfigModule } from "./config";
@@ -28,11 +28,11 @@ import { GatewayModule } from "./gateway/gateway.module";
     ConfigModule,
     StorageModule,
     FileSystemModule,
-    SyncModule,
+    // SyncModule,
     // ConverterModule,
     // GatewayModule,
   ],
   providers: [Logger],
-  controllers: [AppContoller],
+  controllers: [AppController],
 })
 export class AppModule {}

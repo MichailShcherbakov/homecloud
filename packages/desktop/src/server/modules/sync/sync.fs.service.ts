@@ -1,7 +1,9 @@
 import { MetadataEntity } from "@/server/db/entities/metadata.entity";
-import { computeHash } from "@/server/utils/format/computeFileHash";
+import { toJSON } from "@/server/utils/format";
 import { Injectable } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
+import e from "express";
+import { ROOT_RELATIVE_PATH } from "../config/config.constants";
 import { ConfigService } from "../config/config.service";
 import {
   FileSystemEventEnum,
@@ -9,15 +11,16 @@ import {
   MetadataService,
 } from "../file-system";
 import { InjectQueue, Queue } from "../queue";
-import { DirectoryService } from "../storage/directory.service";
-import { SyncWorkerProcessEnum, SYNC_QUEUE_NAME } from "./sync.constans";
+import { ReferenceService } from "../storage/reference.service";
+import { SyncWorkerProcessEnum, SYNC_QUEUE_NAME } from "./constants";
 import { SyncWorkerProcessData } from "./sync.worker";
 
 @Injectable()
 export class SyncFileSystemService {
   constructor(
     private readonly config: ConfigService,
-    private readonly directoryService: DirectoryService,
+    private readonly metadata: MetadataService,
+    private readonly referenceService: ReferenceService,
     private readonly fs: FileSystemService,
     @InjectQueue(SYNC_QUEUE_NAME) private readonly queue: Queue
   ) {}
@@ -27,10 +30,16 @@ export class SyncFileSystemService {
     toAbsolutePath: string,
     metadata: MetadataEntity
   ): Promise<void> {
+    const fileRef = await this.referenceService.getRefByMetadata(metadata);
+
+    /* skip */
+    if (fileRef) return;
+
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.ADD_FILE, {
       kind: "fs",
       toAbsolutePath,
       metadata,
+      metadataInfo: metadata.getInfo(),
     });
   }
 
@@ -40,6 +49,12 @@ export class SyncFileSystemService {
     fromAbsolutePath: string,
     metadata: MetadataEntity
   ): Promise<void> {
+    const metadataInfo = metadata.getInfo();
+    const fileRef = await this.referenceService.getRefByMetadata(metadata);
+
+    /* skip */
+    if (fileRef?.file?.name === metadataInfo.name) return;
+
     this.queue.addJob<SyncWorkerProcessData>(
       SyncWorkerProcessEnum.RENAME_FILE,
       {
@@ -47,6 +62,7 @@ export class SyncFileSystemService {
         toAbsolutePath,
         fromAbsolutePath,
         metadata,
+        metadataInfo: metadata.getInfo(),
       }
     );
   }
@@ -57,22 +73,46 @@ export class SyncFileSystemService {
     fromAbsolutePath: string,
     metadata: MetadataEntity
   ): Promise<void> {
+    const fileMetadataInfo = metadata.getInfo();
+    const fileRef = await this.referenceService.getRefByMetadata(metadata);
+
+    const destDirectoryMetadata = await this.metadata.get(
+      fileMetadataInfo.absoluteDirectoryPath
+    );
+
+    if (!destDirectoryMetadata)
+      throw new Error(
+        `The dest directory metadata was not found: ${fileMetadataInfo.absoluteDirectoryPath}`
+      );
+
+    const destDirRef = await this.referenceService.getRefByMetadata(
+      destDirectoryMetadata
+    );
+
+    /* skip */
+    if (fileRef?.file?.directoryUuid === destDirRef?.directoryUuid) return;
+
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.MOVE_FILE, {
       kind: "fs",
       toAbsolutePath,
       fromAbsolutePath,
       metadata,
+      metadataInfo: metadata.getInfo(),
     });
   }
 
   @OnEvent(FileSystemEventEnum.ON_FILE_REMOVED)
   async onFileRemoved(toAbsolutePath: string, metadata: MetadataEntity) {
+    /* skip. Deleting metadata will provoke deleting file entity in the storage */
+    return;
+
     this.queue.addJob<SyncWorkerProcessData>(
       SyncWorkerProcessEnum.REMOVE_FILE,
       {
         kind: "fs",
         toAbsolutePath,
         metadata,
+        metadataInfo: metadata.getInfo(),
       }
     );
   }
@@ -82,17 +122,16 @@ export class SyncFileSystemService {
     toAbsolutePath: string,
     metadata: MetadataEntity
   ): Promise<void> {
-    const foundDirectory = await this.directoryService.getDirectoryByMetadata(
-      metadata
-    );
+    const directoryRef = await this.referenceService.getRefByMetadata(metadata);
 
     /* skip */
-    if (foundDirectory) return;
+    if (directoryRef) return;
 
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.ADD_DIR, {
       kind: "fs",
       toAbsolutePath,
       metadata,
+      metadataInfo: metadata.getInfo(),
     });
   }
 
@@ -102,20 +141,23 @@ export class SyncFileSystemService {
     fromAbsolutePath: string,
     metadata: MetadataEntity
   ): Promise<void> {
-    const [directory, directoryInfo] = await Promise.all([
-      this.directoryService.getDirectoryByMetadata(metadata),
-      this.fs.getDirectoryInfo(toAbsolutePath),
-    ]);
+    const metadataInfo = metadata.getInfo();
+    const { directory } = await this.referenceService.getRefByMetadataOrFail(
+      metadata
+    );
+
+    if (!directory)
+      throw new Error(`The directory was not found: ${toJSON(metadata)}`);
 
     /* skip */
-    if (directory && directoryInfo && directory.name === directoryInfo.name)
-      return;
+    if (directory.name === metadataInfo.name) return;
 
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.RENAME_DIR, {
       kind: "fs",
       toAbsolutePath,
       fromAbsolutePath,
       metadata,
+      metadataInfo: metadata.getInfo(),
     });
   }
 
@@ -125,42 +167,43 @@ export class SyncFileSystemService {
     fromAbsolutePath: string,
     metadata: MetadataEntity
   ): Promise<void> {
-    const absoluteRootPath = this.config.getAbsoluteRootPath();
+    const metadataInfo = metadata.getInfo();
+    const { directory } = await this.referenceService.getRefByMetadataOrFail(
+      metadata
+    );
 
-    const directoryInfo = await this.fs.getDirectoryInfo(toAbsolutePath);
+    if (!directory)
+      throw new Error(`The directory was not found: ${toJSON(metadata)}`);
 
-    if (!directoryInfo)
-      throw new Error(`The directory info was not found: ${toAbsolutePath}`);
+    const absoluteRootPath = this.config.getRelativePathBy(
+      metadataInfo.absoluteDirectoryPath
+    );
 
-    if (directoryInfo.absoluteDirectoryPath === absoluteRootPath) {
-      const directory = await this.directoryService.getDirectoryByMetadata(
-        metadata
-      );
-
+    if (absoluteRootPath === ROOT_RELATIVE_PATH) {
       /* skip */
-      if (directory && !directory.parentUuid) return;
+      if (!directory.parentUuid) return;
     } else {
-      const destDirMetadata = await this.fs.getMetadataByPath(
-        directoryInfo.absoluteDirectoryPath
+      const destDirectoryMetadata = await this.metadata.get(
+        metadataInfo.absoluteDirectoryPath
       );
 
-      if (!destDirMetadata)
+      if (!destDirectoryMetadata)
         throw new Error(
-          `The dest directory info was not found: ${directoryInfo.absoluteDirectoryPath}`
+          `The dest directory metadata was not found: ${metadataInfo.absoluteDirectoryPath}`
         );
 
-      const [directory, destDirectory] = await Promise.all([
-        this.directoryService.getDirectoryByMetadata(metadata),
-        this.directoryService.getDirectoryByMetadata(destDirMetadata),
-      ]);
+      const { directory: destDirectory } =
+        await this.referenceService.getRefByMetadataOrFail(
+          destDirectoryMetadata
+        );
+
+      if (!destDirectory)
+        throw new Error(
+          `The dest directory was not found: ${toJSON(metadata)}`
+        );
 
       /* skip */
-      if (
-        directory &&
-        destDirectory &&
-        directory.parentUuid === destDirectory.uuid
-      )
-        return;
+      if (directory.parentUuid === destDirectory.uuid) return;
     }
 
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.MOVE_DIR, {
@@ -168,22 +211,20 @@ export class SyncFileSystemService {
       toAbsolutePath,
       fromAbsolutePath,
       metadata,
+      metadataInfo: metadata.getInfo(),
     });
   }
 
   @OnEvent(FileSystemEventEnum.ON_DIR_REMOVED)
   async onDirRemoved(toAbsolutePath: string, metadata: MetadataEntity) {
-    const foundDirectory = await this.directoryService.getDirectoryByMetadata(
-      metadata
-    );
-
-    /* skip */
-    if (!foundDirectory) return;
+    /* skip. Deleting metadata will provoke deleting file entity in the storage */
+    return;
 
     this.queue.addJob<SyncWorkerProcessData>(SyncWorkerProcessEnum.REMOVE_DIR, {
       kind: "fs",
       toAbsolutePath,
       metadata,
+      metadataInfo: metadata.getInfo(),
     });
   }
 }

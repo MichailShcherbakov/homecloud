@@ -1,8 +1,8 @@
 import { Logger, Module } from "@nestjs/common";
-import { FileSystemModule } from "../file-system";
+import { FileSystemModule, WatcherModule } from "../file-system";
 import { QueueModule } from "../queue";
 import { StorageModule } from "../storage";
-import { SYNC_QUEUE_NAME } from "./sync.constans";
+import { SYNC_QUEUE_NAME } from "./constants";
 import { SyncFileSystemService } from "./sync.fs.service";
 import { SyncStorageService } from "./sync.storage.service";
 import { SyncWorker } from "./sync.worker";
@@ -11,6 +11,7 @@ import { SyncWorker } from "./sync.worker";
   imports: [
     StorageModule,
     FileSystemModule,
+    WatcherModule,
     QueueModule.registerQueue({
       name: SYNC_QUEUE_NAME,
       concurrency: 1,

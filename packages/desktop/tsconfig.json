@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
-    "target": "ESNext",
+    "target": "ES2022",
     "useDefineForClassFields": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "allowJs": false,
@@ -10,9 +10,9 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "experimentalDecorators": true,
-    "module": "ESNext",
     "moduleResolution": "Node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
@@ -25,7 +25,8 @@
       "@client/*": ["src/client/*"],
       "@server/*": ["src/server/*"],
       "@common/*": ["src/common/*"]
-    }
+    },
+    "types": ["vitest/globals"]
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]

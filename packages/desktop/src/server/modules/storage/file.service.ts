@@ -1,11 +1,7 @@
 import { FileEntity } from "@/server/db/entities/file.entity";
-import { computeFileHash } from "@/server/utils/fs";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
-import { ConfigService } from "../config/config.service";
-import { DirectoryService } from "./directory.service";
-import { join } from "path";
 import { DirectoryEntity } from "@/server/db/entities/directory.entity";
 
 /**
@@ -14,8 +10,6 @@ import { DirectoryEntity } from "@/server/db/entities/directory.entity";
 @Injectable()
 export class FileService {
   constructor(
-    private readonly config: ConfigService,
-    private readonly directoryService: DirectoryService,
     @InjectRepository(FileEntity)
     private readonly fileRepository: Repository<FileEntity>
   ) {}
@@ -61,9 +55,9 @@ export class FileService {
   }
 
   /**
-   *  Returns files of a certain uuid.
+   *  Returns file of a certain uuid.
    *  @param uuid
-   *  @returns Array of the files
+   *  @returns file
    */
   public getFileByUuid(uuid: string): Promise<FileEntity | null> {
     return this.fileRepository.findOneBy({
@@ -72,130 +66,60 @@ export class FileService {
   }
 
   /**
-   *  Returns files of a certain uuid.
+   *  Returns file of a certain uuid. Throw an error when a file was not found
    *  @param uuid
-   *  @returns Array of the files
+   *  @returns file
    */
-  public async getFileByAbsolutePath(
-    absolutePath: string
+  public async getFileByUuidOrFail(uuid: string): Promise<FileEntity> {
+    const file = await this.getFileByUuid(uuid);
+
+    if (!file) throw new Error(`The file was not found: ${uuid}`);
+
+    return file;
+  }
+
+  /**
+   *  Returns file of a certain relative path.
+   *  @param relativePath
+   *  @returns file
+   */
+  public async getFileByRelativePath(
+    relativePath: string
   ): Promise<FileEntity | null> {
-    const absoluteRootPath = this.config.getAbsoluteRootPath();
-    const hash = await computeFileHash(absolutePath);
+    return this.fileRepository.findOneBy({
+      relativePath,
+    });
+  }
 
-    const foundFiles = await this.getFilesByHash(hash);
+  /**
+   *  Returns file of a certain relative path. Throw an error when a file was not found
+   *  @param relativePath
+   *  @returns file
+   */
+  public async getFileByRelativePathOrFail(
+    relativePath: string
+  ): Promise<FileEntity> {
+    const file = await this.getFileByUuid(relativePath);
 
-    const files = await Promise.all(
-      foundFiles.map(async file => {
-        if (!file.directoryUuid) {
-          if (absolutePath === absoluteRootPath) return file;
+    if (!file) throw new Error(`The file was not found: ${relativePath}`);
 
-          return null;
-        }
-
-        const directory = await this.directoryService.getDirectoryByUuid(
-          file.directoryUuid
-        );
-
-        if (!directory) return null;
-
-        const ancestors = await this.directoryService.getAncestorsDirectory(
-          directory
-        );
-
-        const relativeFilePath = [
-          ...ancestors.map(a => a.name),
-          directory.name,
-          file.name,
-        ].join("/");
-        const absoluteFilePath = join(absoluteRootPath, relativeFilePath);
-
-        if (absoluteFilePath !== absolutePath) return null;
-
-        return file;
-      })
-    );
-
-    return files.find(file => !!file) ?? null;
+    return file;
   }
 
   /**
    * @param file
-   * @returns new file
+   * @returns file
    */
-  private saveFile(file: FileEntity): Promise<FileEntity> {
+  public saveFile(file: FileEntity): Promise<FileEntity> {
     return this.fileRepository.save(file);
   }
 
   /**
-   * @param file
-   * @returns
+   * @param uuid
    */
-  public async createFile(file: FileEntity, destDirectory?: DirectoryEntity) {
-    const fileClone = file.clone();
-    fileClone.directory = destDirectory;
-    fileClone.directoryUuid = destDirectory?.uuid;
-
-    const newFile = await this.saveFile(fileClone);
-
-    await this.directoryService.updateEntitySize(newFile, "increase");
-
-    /** TODO: Check name exists */
-
-    return newFile;
-  }
-
-  /**
-   * @param file
-   * @param name
-   * @returns
-   */
-  public async renameFile(file: FileEntity, name: string) {
-    const fileClone = file.clone();
-    fileClone.name = name;
-
-    const updatedFile = await this.saveFile(fileClone);
-
-    /** TODO: Check name exists */
-
-    return updatedFile;
-  }
-
-  /**
-   * @param file
-   * @param destDirectory
-   * @returns
-   */
-  public async moveFile(file: FileEntity, destDirectory?: DirectoryEntity) {
-    await this.directoryService.updateEntitySize(file, "decrease");
-
-    const fileClone = file.clone();
-    fileClone.directory = destDirectory;
-    fileClone.directoryUuid = destDirectory?.uuid;
-
-    const updatedFile = await this.saveFile(fileClone);
-
-    /** TODO: Check name exists */
-
-    await this.directoryService.updateEntitySize(updatedFile, "increase");
-
-    return updatedFile;
-  }
-
-  /**
-   * @param file
-   * @returns the deleted file
-   */
-  public async deleteFileByUuid(uuid: string): Promise<FileEntity> {
-    const foundFile = await this.getFileByUuid(uuid);
-
-    if (!foundFile) throw new Error(`The file was not found: ${uuid}`);
-
-    await this.directoryService.updateEntitySize(foundFile, "decrease");
-
+  public async deleteFileByUuid(uuid: string): Promise<void> {
     await this.fileRepository.delete({
       uuid,
     });
-
-    return foundFile;
   }
 }

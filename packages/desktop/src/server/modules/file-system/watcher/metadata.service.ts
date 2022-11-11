@@ -3,7 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { Like, Repository } from "typeorm";
 import * as fs from "fs/promises";
 import { InjectRepository } from "@nestjs/typeorm";
-import { join } from "path";
+import { join, sep } from "path";
 
 @Injectable()
 export class MetadataService {
@@ -17,6 +17,7 @@ export class MetadataService {
 
     const metadata = new MetadataEntity();
     metadata.path = path;
+    metadata.size = Number(stat.size);
     metadata.isFile = stat.isFile();
     metadata.isDirectory = stat.isDirectory();
     metadata.ino = stat.ino.toString();
@@ -40,7 +41,7 @@ export class MetadataService {
 
     /// delete the descendants
     await this.metadataRepository.delete({
-      path: Like(`${path}/%`),
+      path: Like(`${path}${sep}%`),
     });
 
     return metadata;
@@ -54,7 +55,7 @@ export class MetadataService {
     metadata.path = newPath;
 
     const descendants = await this.metadataRepository.findBy({
-      path: Like(`${oldPath}/%`),
+      path: Like(`${oldPath}${sep}%`),
     });
 
     await this.metadataRepository.save([

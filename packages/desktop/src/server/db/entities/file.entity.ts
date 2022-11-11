@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne } from "typeorm";
 import { DirectoryEntity } from "./directory.entity";
 import { IEntity } from "./entity.interface";
+import { MetadataEntity } from "./metadata.entity";
 
 @Entity("files")
 export class FileEntity extends IEntity {
@@ -9,6 +10,9 @@ export class FileEntity extends IEntity {
 
   @Column()
   size: number;
+
+  @Column()
+  relativePath: string;
 
   @Column({ type: "varchar" })
   hash: string;
@@ -19,14 +23,14 @@ export class FileEntity extends IEntity {
     nullable: true,
     default: null,
   })
-  directoryUuid?: string;
+  directoryUuid: string | null;
 
-  @ManyToOne(() => DirectoryEntity, { onDelete: "CASCADE" })
+  @ManyToOne(() => DirectoryEntity, { nullable: true, onDelete: "CASCADE" })
   @JoinColumn({
     name: "directoryUuid",
     referencedColumnName: "uuid",
   })
-  directory?: DirectoryEntity;
+  directory: DirectoryEntity | null;
 
   clone(): FileEntity {
     return Object.assign(new DirectoryEntity(), this);

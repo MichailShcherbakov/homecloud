@@ -12,7 +12,7 @@ import {
 import { createReadStream, existsSync, mkdirSync } from "fs";
 import { StorageService } from "./storage.service";
 import type { Response } from "express";
-import { join } from "path";
+import { join, sep } from "path";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 import { UploadDto } from "./storage.dto";
@@ -47,7 +47,7 @@ export class StorageController {
     @Param("uuid", ParseUUIDPipe) uuid: string,
     @Res() res: Response
   ): Promise<void> {
-    const path = await this.storageService.getGlobaFilePath(uuid);
+    const path = await this.storageService.getGlobalFilePath(uuid);
 
     res.contentType("application/vnd.apple.mpegurl");
 
@@ -60,12 +60,12 @@ export class StorageController {
     @Param("segment") segment: string,
     @Res() res: Response
   ): Promise<void> {
-    const path = await this.storageService.getGlobaFilePath(uuid);
-    const rawPath = path.replaceAll("\\", "/").split("/");
+    const path = await this.storageService.getGlobalFilePath(uuid);
+    const rawPath = path.split(sep);
 
     rawPath.pop();
 
-    const segmentPath = join(rawPath.join("/"), segment);
+    const segmentPath = join(rawPath.join(sep), segment);
 
     res.contentType("video/MP2T");
 
